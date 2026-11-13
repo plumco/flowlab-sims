@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Swept Tee Live Simulator</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#14181f;--mut:#5b6573;--bd:#d9dee5;--ac:#1f6feb;--ok:#2e9e5b;--wa:#e0a100;--er:#d63b3b;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101419;--card:#1a2029;--tx:#e8ecf1;--mut:#9aa6b4;--bd:#2c3542;--ac:#5aa2ff;--ok:#4cc582;--wa:#f0b72f;--er:#ff6b6b}}
+:root[data-theme="dark"]{--bg:#101419;--card:#1a2029;--tx:#e8ecf1;--mut:#9aa6b4;--bd:#2c3542;--ac:#5aa2ff;--ok:#4cc582;--wa:#f0b72f;--er:#ff6b6b}
+*{box-sizing:border-box}
+body{margin:0 auto;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:12px;max-width:1150px}
+h1{font-size:19px;margin:4px 0 2px}.sub{color:var(--mut);font-size:13px;margin-bottom:10px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(min-width:720px){.grid{grid-template-columns:repeat(3,1fr)}}
+label{display:block;font-size:12.5px;color:var(--mut)}label b{color:var(--tx);float:right}
+input[type=range]{width:100%}
+select{width:100%;padding:6px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)}
+button{font:inherit;font-size:14px;padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);cursor:pointer}
+button.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
+button.on{border-color:var(--ac);box-shadow:inset 0 0 0 1px var(--ac)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:8px}
+.row>div{flex:1;min-width:130px}
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.kpi div{background:var(--bg);border-radius:8px;padding:8px 4px}.kpi span{display:block;font-size:11px;color:var(--mut)}.kpi strong{font-size:17px}
+canvas{display:block}
+#cp{width:100%;height:230px}#cs{width:100%;height:150px}
+.verdict{padding:10px;border-radius:8px;font-weight:600;color:#fff;margin-bottom:8px}
+.note{font-size:12px;color:var(--mut)}ul{margin:6px 0 0 18px;padding:0}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+details summary{cursor:pointer;font-weight:600}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.chips button{font-size:12.5px;padding:6px 10px}
+#sw{background:#000;border-radius:10px;overflow:auto;border:1px solid #333;scrollbar-gutter:stable;overscroll-behavior:contain;color-scheme:dark;height:420px}
+#spacer{position:relative}
+#sheet{position:sticky;top:0;left:0;display:block;cursor:pointer}
+.stepper{display:flex;gap:6px;align-items:center}
+.stepper input{width:84px;font:inherit;font-size:20px;font-weight:700;text-align:center;padding:6px;border-radius:8px;border:2px solid var(--ac);background:var(--bg);color:var(--tx)}
+.stepper button{font-size:20px;line-height:1;padding:8px 14px}
+.fgrid{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.fc{min-width:36px;padding:5px 0;font-size:12px;border-radius:6px;color:#fff;border:0;background:#777}
+.fc.ok{background:var(--ok)}.fc.wa{background:#c98a00}.fc.er{background:var(--er)}
+.fc.on{outline:2px solid var(--ac);outline-offset:1px}.fc.lost{text-decoration:line-through}
+.syscards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+@media(max-width:720px){.syscards{grid-template-columns:1fr}}
+.sc{background:var(--bg);border:2px solid var(--bd);border-radius:10px;padding:8px 10px;cursor:pointer;font-size:13px}
+.sc.sel{border-color:var(--ok)}
+.sc h3{margin:0 0 2px;font-size:14px}.sc .d{color:var(--mut);font-size:12px;margin-bottom:4px}
+</style></head><body><style>.hub-back{position:fixed;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:99;background:#1f6feb;color:#fff;font:600 13px system-ui,sans-serif;padding:8px 12px;border-radius:20px;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.3)}</style><a class="hub-back" href="https://claude.ai/artifact/CwDQXj6etUUZjSixqyweAR">← All simulators</a>
+<h1>Sunken + Swept Tee Live Simulator</h1>
+<div class="sub">Your CAD sheet "Sunken with Huliot Swept Tee system", animated, with as many floors as you set. Three PRL arrangements, same flush, live pressure on each.</div>
+
+<div class="card">
+ <div class="row" style="align-items:center">
+  <div style="flex:0 0 auto;min-width:0"><label for="nf" style="font-weight:600;color:var(--tx);font-size:14px">Number of floors</label>
+   <div class="stepper"><button id="nMinus" aria-label="one floor less">−</button><input id="nf" type="number" inputmode="numeric" min="2" max="100" value="10"><button id="nPlus" aria-label="one floor more">+</button></div></div>
+  <div style="flex:1;min-width:200px"><div class="chips" id="nchips" style="margin:0"></div></div>
+ </div>
+ <div class="note" style="margin-bottom:10px">Type any number from 2 to 100. The drawing shows exactly that many floors: top floor at the top, floor 1 at the bottom where the lowest branch goes into the PRL.</div>
+ <div class="row">
+  <button class="pri" id="bPlay">⏸ Pause</button>
+  <button id="bFlush">💧 Flush now</button>
+  <button id="bReset">↺ Refill traps</button>
+  <div><label>Flush mode</label><select id="mode"><option value="cycle">Repeating flushes</option><option value="single">Single (manual)</option><option value="hold">Continuous load</option></select></div>
+  <div><label>Speed <b id="v_speed">1×</b></label><input type="range" id="speed" min="0.2" max="3" step="0.1" value="1"></div>
+ </div>
+ <div class="row" style="margin-bottom:0">
+  <button id="vFull" class="on">Full drawing</button>
+  <button id="vFit">Fit whole building</button>
+  <button id="vPrl">Zoom on PRL fittings</button>
+  <button id="bTop">↑ Top</button><button id="bBot">↓ Bottom</button>
+  <span class="note" style="align-self:center">Scroll the drawing to see every floor. Tap a system to flush it.</span>
+ </div>
+</div>
+
+<div id="sw"><div id="spacer"><canvas id="sheet"></canvas></div></div>
+<div class="note" style="margin:6px 2px 0"><span class="sw" style="background:#e8392f"></span>Stack &nbsp;<span class="sw" style="background:#f2e11b"></span>PRL &nbsp;<span class="sw" style="background:#2f3fff"></span>Drain / lower stack &nbsp;<span class="sw" style="background:#5fd8ff"></span>Water &nbsp;· red glow = positive pressure, blue glow = suction, yellow dots = air relieved through the PRL, U under each slab = trap seal · green diamond = Huliot coupler · PRL fittings follow your CAD photo (45° Y-tee, curved 45°/90° bends, couplers, tee at the lowest floor, 2xD bend pair, 45° Y into the drain) · every floor is drawn and numbered (F1 = lowest). On tall buildings use Fit whole building for the overview</div>
+<div class="syscards" id="syscards"></div>
+<div class="card" style="margin-top:12px"><b id="gtitle">Floor status</b> <span class="note">· tap a floor to flush it and jump to it · <span class="sw" style="background:var(--ok)"></span>within ±25 mm <span class="sw" style="background:#c98a00"></span>25–40 <span class="sw" style="background:var(--er)"></span>over 40 or seal lost</span>
+ <div class="fgrid" id="fgrid"></div></div>
+
+<div class="card" style="margin-top:12px">
+ <div id="verdict" class="verdict"></div>
+ <div class="kpi" id="kpi"></div>
+ <ul id="recs"></ul>
+</div>
+
+<div class="card"><b id="ptitle">Live pressure along stack</b>
+ <canvas id="cp"></canvas>
+ <div class="note"><span class="sw" style="background:var(--ac)"></span>Live &nbsp;<span class="sw" style="background:var(--mut)"></span>Design peak &nbsp;<span class="sw" style="background:var(--wa)"></span>What-if PRL toggled &nbsp;<span class="sw" style="background:var(--er)"></span>Recorded peaks</div>
+</div>
+
+<div class="card"><b>Pressure history</b> <span class="note">(max / min over all floors, selected system)</span>
+ <canvas id="cs"></canvas>
+</div>
+
+<div class="card">
+ <details open><summary>Scenario &amp; inputs</summary>
+  <div class="chips" style="margin-top:10px" id="presets"></div>
+  <div class="grid" id="inputs"></div>
+  <div class="row" style="margin-top:10px"><button id="bCsv">⬇ Peak data CSV</button><button id="bPeak">Clear peaks</button></div>
+ </details>
+</div>
+
+<div class="card note"><b>Limits:</b> quasi-steady air-entrainment model with a dynamic surge multiplier and a damped trap oscillator. System factors (C best, A next, B least) and the swept-tee benefit are illustrative for comparison, not test data. Not calibrated to AIRNET or site data. Use it to compare options (PRL size, vent, stack size, tee type), not for final design. Confirm with on-site pressure readings.</div>
+
+<script>
+/* =================== parameters =================== */
+const P={N:10,H:3,D:110,nAct:4,qf:1.0,seal:50,vent:'open',prl:1,prlD:110,tee:'swept',surge:2.5,sewer:0,pattern:'mix'};
+const defs=[
+['H','Floor height (m)',2.5,4,0.1,v=>v+' m'],
+['nAct','Floors discharging together',1,50,1,v=>v],['qf','Flow per floor (L/s)',0.3,3,0.1,v=>v+' L/s'],
+['surge','Dynamic surge factor',1,4,0.1,v=>v+'×'],['sewer','Sewer back pressure (mm WG)',0,40,1,v=>v]
+];
+const sels=[
+['D','Stack diameter',[[100,'100 mm'],[110,'110 mm'],[125,'125 mm'],[150,'150 mm']]],
+['seal','Trap seal depth',[[50,'50 mm'],[75,'75 mm']]],
+['vent','Top of stack',[['open','Open to atmosphere'],['aav','Air admittance valve'],['blocked','Restricted / blocked']]],
+['tee','Branch connection',[['swept','Swept tee (Huliot)'],['std','Standard 87.5° tee']]],
+['prl','Pressure relief line (PRL)',[[1,'Fitted'],[0,'Not fitted']]],
+['prlD','PRL diameter',[[110,'110 mm'],[75,'75 mm'],[50,'50 mm']]],
+['pattern','Which floors flush',[['mix','Top, bottom and spread'],['random','Random floors'],['top','Top floors'],['bottom','Bottom floors'],['spread','Evenly spread']]]
+];
+const BASE={H:3,D:110,nAct:4,qf:1,seal:50,vent:'open',prl:1,prlD:110,tee:'swept',surge:2.5,sewer:0,pattern:'mix'};
+const presets=[
+['Baseline',{}],['Well designed',{D:150,seal:75}],['Standard tee',{tee:'std'}],['No PRL',{prl:0}],['Small PRL (50 mm)',{prlD:50}],
+['Blocked vent',{vent:'blocked'}],['AAV only, no PRL',{vent:'aav',prl:0,nAct:8}],
+['Sewer surcharge',{sewer:30}],['Heavy peak',{nAct:12,qf:1.5,pattern:'top'}]
+];
+const TS=0.3,RISE=0.8,HOLD=3,TAU=1.2,OPTS=[1,2,3];
+const SYSNAME={1:'A',2:'B',3:'C'};
+const SYSDESC={1:'Left: PRL beside stack, 45° bends into the horizontal drain',2:'Middle: stack offset with PRL loop, drain turns down',3:'Right: straight stack, PRL rejoins at the base'};
+const $=id=>document.getElementById(id);
+let RR={},AA={},OS={},SEL=1,C={},last=0,fcount=0,CFG={},CK='',VIEW='full',PEND=null,SAVED=null,GR=[],GRS=[];
+const NMIN=2,NMAX=100,PITCH=72;
+let VP={s:1,sx:0,sy:0,W:0,H:0},VIS={y0:0,y1:1e9,lod:0},MINW=.4;
+const SB={1:{sx:22,x0:40,x1:142,t0:71,adj:0,dt:-13,wbx:80},2:{sx:167,x0:171,x1:289,t0:71,adj:-4,dt:-19,wbx:226.5},3:{sx:335,x0:354,x1:456,t0:61,adj:0,dt:-15,wbx:393}};
+const Lof=k=>SB[k].t0+(P.N-1)*PITCH+SB[k].adj;
+const HSheet=()=>71+(P.N-1)*PITCH+133;
+function zoomBox(k){const L=Lof(k);return{1:[0,L-75,150,125],2:[160,L-65,136,152],3:[326,L-65,150,152]}[k]}
+function ensureCfg(){const key=P.N+'|'+P.prl;if(key!==CK){CK=key;OPTS.forEach(o=>CFG[o]=sysCfg(o))}}
+const TL={t:0,t0:0,run:true,speed:1,mode:'cycle',act:[],fa:32,flushes:0,
+ wat:[],air:[]};
+function seedFx(){const n=P.N;TL.wat=Array.from({length:Math.min(2000,Math.max(110,n*22))},()=>Math.random());const na=Math.min(150,Math.max(14,n*3));TL.air=Array.from({length:na},(_,i)=>i/na)}
+
+/* =================== UI =================== */
+const box=$('inputs');
+defs.forEach(([k,l,mn,mx,st,f])=>{const d=document.createElement('div');d.innerHTML=`<label>${l}<b id="v_${k}">${f(P[k])}</b></label><input type="range" min="${mn}" max="${mx}" step="${st}" value="${P[k]}" id="i_${k}">`;box.appendChild(d);
+ d.querySelector('input').oninput=e=>{P[k]=+e.target.value;$('v_'+k).textContent=f(P[k]);onParam(k)}});
+sels.forEach(([k,l,o])=>{const d=document.createElement('div');d.innerHTML=`<label>${l}</label><select id="s_${k}">${o.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select>`;box.appendChild(d);
+ d.querySelector('select').onchange=e=>{const v=e.target.value;P[k]=isNaN(v)?v:+v;onParam(k)}});
+function syncUI(){
+ $('nf').value=P.N;syncChips();
+ defs.forEach(([k,,,,,f])=>{$('i_'+k).value=P[k];$('v_'+k).textContent=f(P[k])});
+ sels.forEach(([k])=>{$('s_'+k).value=String(P[k])});
+}
+presets.forEach(([n,o])=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>{Object.assign(P,BASE,o);syncUI();initAll();recalc();TL.run=true;setPlayLabel()};$('presets').appendChild(b)});
+function onParam(k){if(k==='N'||k==='seal'||k==='nAct'||k==='pattern')initAll();recalc()}
+function setPlayLabel(){$('bPlay').textContent=TL.run?'⏸ Pause':'▶ Play'}
+$('bPlay').onclick=()=>{TL.run=!TL.run;setPlayLabel()};
+$('bFlush').onclick=()=>{TL.run=true;setPlayLabel();pickActive()};
+$('bReset').onclick=()=>{OPTS.forEach(k=>{OS[k].seal.fill(P.seal);OS[k].y.fill(0);OS[k].v.fill(0)})};
+$('bPeak').onclick=()=>{OPTS.forEach(k=>{const O=OS[k];O.pk=0;O.pn=0;O.pmx.fill(0);O.pmn.fill(0);O.hist=[]})};
+$('mode').onchange=e=>{TL.mode=e.target.value;pickActive()};
+$('speed').oninput=e=>{TL.speed=+e.target.value;$('v_speed').textContent=TL.speed.toFixed(1)+'×'};
+function setView(v){const sw=$('sw');if(VIEW==='full')SAVED=[sw.scrollLeft,sw.scrollTop];VIEW=v;if(v==='full'&&SAVED)PEND={x:SAVED[0],y:SAVED[1]};
+ ['full','fit','prl'].forEach(m=>$('v'+m[0].toUpperCase()+m.slice(1)).classList.toggle('on',v===m))}
+$('vFull').onclick=()=>setView('full');$('vFit').onclick=()=>setView('fit');$('vPrl').onclick=()=>setView('prl');
+$('bTop').onclick=()=>{if(VIEW!=='full')setView('full');PEND={top:1}};$('bBot').onclick=()=>{if(VIEW!=='full')setView('full');PEND={bot:1}};
+function goFloor(f){TL.run=true;setPlayLabel();TL.act=[f];TL.fa=f;TL.t0=TL.t;TL.flushes++;if(VIEW!=='full')setView('full');PEND={f}}
+/* ---- floors input ---- */
+const nf=$('nf');
+[5,10,15,20,35,50,75,100].forEach(n=>{const b=document.createElement('button');b.textContent=n+' floors';b.dataset.n=n;b.onclick=()=>setN(n);$('nchips').appendChild(b)});
+function syncChips(){document.querySelectorAll('#nchips button').forEach(b=>b.classList.toggle('on',+b.dataset.n===P.N))}
+function setN(v){v=Math.max(NMIN,Math.min(NMAX,Math.round(+v||P.N)));nf.value=v;if(v===P.N)return;P.N=v;syncChips();initAll();buildGrid();recalc();PEND={bot:1};if(VIEW==='full'&&v<=6)PEND={top:1}}
+nf.oninput=()=>{const v=+nf.value;if(nf.value!==''&&Number.isInteger(v)&&v>=NMIN&&v<=NMAX)setN(v)};
+nf.onchange=()=>setN(nf.value);nf.onkeydown=e=>{if(e.key==='Enter')nf.blur()};
+$('nMinus').onclick=()=>setN(P.N-1);$('nPlus').onclick=()=>setN(P.N+1);
+function buildGrid(){const g=$('fgrid');g.innerHTML='';GR=[];GRS=[];for(let f=P.N;f>=1;f--){const b=document.createElement('button');b.className='fc';b.textContent=f;b.onclick=()=>goFloor(f);g.appendChild(b);GR[f]=b}}
+function updateGrid(){const O=OS[SEL];if(!O||!GR.length)return;for(let f=1;f<=P.N;f++){if(!GR[f])continue;const i=f-1,ay=Math.abs(O.y[i]),lost=O.seal[i]<25;let st=lost||ay>=40?'er':ay<25?'ok':'wa';if(TL.act.includes(f)&&env(TL.t-TL.t0)>.05)st+=' on';if(lost)st+=' lost';if(GRS[f]!==st){GRS[f]=st;GR[f].className='fc '+st}}}
+function selectSys(k,flush){SEL=k;document.querySelectorAll('.sc').forEach(e=>e.classList.toggle('sel',+e.dataset.k===k));if(flush){TL.run=true;setPlayLabel();pickActive()}recalc()}
+OPTS.forEach(k=>{const d=document.createElement('div');d.className='sc'+(k===1?' sel':'');d.dataset.k=k;d.innerHTML=`<h3>System ${SYSNAME[k]}</h3><div class="d">${SYSDESC[k]}</div><div id="cap${k}"></div>`;d.onclick=()=>selectSys(k,true);$('syscards').appendChild(d)});
+$('sheet').onclick=e=>{const r=$('sheet').getBoundingClientRect(),x=(e.clientX-r.left+VP.sx)/VP.s;selectSys(x<160?1:x<332?2:3,true)};
+$('bCsv').onclick=()=>{const O=OS[SEL];let s='floor,peak_positive_mm,peak_negative_mm,residual_seal_mm\n';for(let i=0;i<P.N;i++)s+=`${i+1},${O.pmx[i].toFixed(1)},${O.pmn[i].toFixed(1)},${O.seal[i].toFixed(1)}\n`;
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv'}));a.download='system'+SYSNAME[SEL]+'_stack_peaks.csv';a.click()};
+
+/* =================== physics (steady screening model, per system) =================== */
+function sim(p){
+ const g=9.81,rho=1.2,nu=1e-6,L=p.N*p.H;
+ const D=(p.D-6)/1000,Q=Math.min(p.nAct,p.N)*p.qf/1000;
+ const t=Math.cbrt(3*nu*Q/(Math.PI*D*9.81));
+ const Vt=0.75*Q/(Math.PI*D*t);
+ const Dc=D-2*t;
+ const Qcap=4.0*Math.pow(p.D/110,8/3),fill=Q*1000/Qcap;
+ const Kin={open:0.8,aav:4,blocked:25}[p.vent];
+ const SY={1:{kb:0.6,eff:1.0},2:{kb:1.5,eff:0.85},3:{kb:0.2,eff:0.95}}[p.prlOpt]||{kb:0.6,eff:1};
+ const TEE=p.tee==='swept'?{kj:0.85,su:0.93}:{kj:1.0,su:1.12};
+ const Kj=10*Math.min(2,Math.max(0.3,Q*1000/3))*TEE.kj;
+ const surge=p.surge*TEE.su;
+ let Kbase=SY.kb+Kj;
+ if(p.prl){const r=Math.pow(p.prlD/p.D,2)*SY.eff;Kbase=Kbase/Math.pow(1+1.5*r,2)*(1+0.02*2)}
+ const fi=0.05,fw=0.02,K=Kin+Kbase,a=0.5*rho;
+ let lo=0,hi=Vt;
+ for(let i=0;i<60;i++){const m=(lo+hi)/2;const f=fi*(L/Dc)*a*(Vt-m)**2-fw*(L/D)*a*m*m-K*a*m*m;if(f>0)lo=m;else hi=m}
+ const Va=(lo+hi)/2,q=a*Va*Va;
+ const Ptop=-Kin*q*surge/g,Pb0=(Kbase*q*surge)/g;
+ const pr=[],prDyn=[],sw=[];
+ for(let f=1;f<=p.N;f++){const s=(p.N-f)/Math.max(1,p.N-1);const w=Math.pow(s,1.6);
+  const d=Ptop+(Pb0-Ptop)*w,sv=p.sewer*w;prDyn.push(d);sw.push(sv);pr.push(d+sv)}
+ return{pr,prDyn,sw,Vt,fill,Qcap,Va};
+}
+function recalc(){
+ OPTS.forEach(k=>{RR[k]=sim({...P,prlOpt:k});AA[k]=sim({...P,prlOpt:k,prl:P.prl?0:1});
+  const R=RR[k];R.mx=Math.max(...R.pr);R.mn=Math.min(...R.pr);R.bad=Math.max(R.mx,-R.mn)});
+ colors();updateDOM(true);
+}
+const verdictOf=b=>b<25?['PASS','var(--ok)','#2e9e5b']:b<40?['MARGINAL','var(--wa)','#c98a00']:['FAIL','var(--er)','#d63b3b'];
+function colors(){const cs=getComputedStyle(document.documentElement);['--bg','--card','--tx','--mut','--bd','--ac','--ok','--wa','--er'].forEach(n=>C[n]=cs.getPropertyValue(n).trim()||'#888')}
+matchMedia('(prefers-color-scheme:dark)').addEventListener&&matchMedia('(prefers-color-scheme:dark)').addEventListener('change',colors);
+
+/* =================== dynamic state =================== */
+function newOpt(){const n=P.N;return{y:new Float32Array(n),v:new Float32Array(n),tgt:new Float32Array(n),seal:new Float32Array(n).fill(P.seal),
+ pk:0,pn:0,pmx:new Float32Array(n),pmn:new Float32Array(n),hist:[],prlp:Array.from({length:8},(_,i)=>i/8)}}
+function initAll(){OPTS.forEach(k=>OS[k]=newOpt());seedFx();TL.t=0;TL.t0=0;TL.flushes=0;pickActive()}
+function pickActive(){
+ const n=P.N,k=Math.min(P.nAct,n);let a=[];
+ if(P.pattern==='mix'){const s=new Set();[n,1].forEach(f=>{if(s.size<k)s.add(f)});const m=k-s.size;for(let j=1;j<=m;j++)s.add(Math.max(1,Math.min(n,Math.round(1+j*(n-1)/(m+1)))));while(s.size<k)s.add(1+Math.floor(Math.random()*n));a=[...s]}
+ else if(P.pattern==='top'){for(let i=0;i<k;i++)a.push(n-i)}
+ else if(P.pattern==='bottom'){for(let i=0;i<k;i++)a.push(1+i)}
+ else if(P.pattern==='spread'){const s=new Set();for(let i=0;i<k;i++)s.add(Math.max(1,Math.min(n,Math.round(1+(i+0.5)*(n-1)/k))));a=[...s]}
+ else{const s=new Set();while(s.size<k)s.add(1+Math.floor(Math.random()*n));a=[...s]}
+ TL.act=a;TL.fa=Math.max(...a);TL.t0=TL.t;TL.flushes++;
+}
+function env(ph){
+ if(ph<=0)return 0;
+ if(ph<RISE){const s=ph/RISE;return s*s*(3-2*s)}
+ if(TL.mode==='hold'||ph<RISE+HOLD)return 1;
+ return Math.exp(-(ph-RISE-HOLD)/TAU);
+}
+const trav=()=>P.N*P.H/RR[1].Vt*TS;
+function ef(f){const d=f<TL.fa?(TL.fa-f)*P.H/RR[1].Vt*TS:0;return env(TL.t-TL.t0-d)}
+function step(dt){
+ TL.t+=dt;
+ const Tc=RISE+HOLD+4*TAU+trav()+1.5;
+ if(TL.mode==='cycle'&&TL.t-TL.t0>Tc)pickActive();
+ const sub=Math.max(1,Math.ceil(dt/0.02)),h=dt/sub,w0=2*Math.PI*1.3,z=0.22;
+ OPTS.forEach(k=>{
+  const O=OS[k],Rk=RR[k];let mx=-1e9,mn=1e9;
+  for(let i=0;i<P.N;i++){
+   const e=ef(i+1),tgt=Rk.prDyn[i]*Math.pow(e,1.5)+Rk.sw[i];O.tgt[i]=tgt;
+   let y=O.y[i],v=O.v[i];
+   for(let s=0;s<sub;s++){const a=w0*w0*(tgt-y)-2*z*w0*v;v+=a*h;y+=v*h}
+   y=Math.max(-120,Math.min(120,y));O.y[i]=y;O.v[i]=v;
+   const ay=Math.abs(y);if(ay>25)O.seal[i]=Math.max(0,O.seal[i]-(ay-25)*0.1*dt);
+   if(tgt>O.pmx[i])O.pmx[i]=tgt;if(tgt<O.pmn[i])O.pmn[i]=tgt;
+   if(tgt>mx)mx=tgt;if(tgt<mn)mn=tgt;
+  }
+  if(mx>O.pk)O.pk=mx;if(-mn>O.pn)O.pn=-mn;
+  O.hist.push([mx,mn]);if(O.hist.length>400)O.hist.shift();
+ });
+ const rate=1/Math.max(1.5,trav()*0.9);
+ TL.wat.forEach((s,i)=>TL.wat[i]=(s+dt*rate*(0.8+0.4*((i*7)%5)/5))%1);
+ TL.air.forEach((u,i)=>TL.air[i]=(u+dt*0.28)%1);
+ OPTS.forEach(k=>{const O=OS[k],p0=O.tgt[0];O.prlp.forEach((u,i)=>O.prlp[i]=(u+dt*(p0>3?0.5:0.08))%1)});
+}
+const colv=v=>{v=Math.abs(v);return v<25?C['--ok']:v<40?C['--wa']:C['--er']};
+const cv2=v=>{v=Math.abs(v);return v<25?'#43d65c':v<40?'#f0b72f':'#ff6b6b'};
+
+/* =================== CAD helpers (sheet units: 477 x 492) =================== */
+function ln(c,pts,col,w,close,dash){c.save();c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));if(close)c.closePath();c.strokeStyle=col;c.lineWidth=Math.max(w,MINW);c.lineJoin='miter';if(dash)c.setLineDash(dash);c.stroke();c.restore()}
+function rc(c,x,y,w,h,col,lw,fill){if(fill){c.fillStyle=fill;c.fillRect(x,y,w,h)}c.strokeStyle=col;c.lineWidth=Math.max(lw||.5,MINW);c.strokeRect(x,y,w,h)}
+function ci(c,x,y,r,col,lw,fill){c.beginPath();c.arc(x,y,r,0,7);if(fill){c.fillStyle=fill;c.fill()}if(col){c.strokeStyle=col;c.lineWidth=lw||.5;c.stroke()}}
+function txt(c,t,x,y,o){o=o||{};c.save();c.translate(x,y);if(o.rot)c.rotate(o.rot*Math.PI/180);c.font=(o.b?'bold ':'')+(o.s||4)+'px Arial,Helvetica,sans-serif';c.fillStyle=o.c||'#fff';c.textAlign=o.a||'center';c.textBaseline='middle';c.fillText(t,0,0);c.restore()}
+function offs(pts,d){
+ const n=pts.length,seg=[],out=[];
+ for(let i=0;i<n-1;i++){const dx=pts[i+1][0]-pts[i][0],dy=pts[i+1][1]-pts[i][1],l=Math.hypot(dx,dy)||1;seg.push([dx/l,dy/l])}
+ const nx=i=>-seg[i][1]*d,ny=i=>seg[i][0]*d;
+ out.push([pts[0][0]+nx(0),pts[0][1]+ny(0)]);
+ for(let i=1;i<n-1;i++){
+  const a=[pts[i][0]+nx(i-1),pts[i][1]+ny(i-1)],b=[pts[i][0]+nx(i),pts[i][1]+ny(i)],d1=seg[i-1],d2=seg[i];
+  const cr=d1[0]*d2[1]-d1[1]*d2[0];
+  if(Math.abs(cr)<1e-6)out.push(a);else{const t=((b[0]-a[0])*d2[1]-(b[1]-a[1])*d2[0])/cr;out.push([a[0]+d1[0]*t,a[1]+d1[1]*t])}
+ }
+ out.push([pts[n-1][0]+nx(n-2),pts[n-1][1]+ny(n-2)]);
+ return out;
+}
+function dpipe(c,pts,w,col,lw,fill,dash){
+ const A=offs(pts,w/2),B=offs(pts,-w/2);
+ if(fill){c.beginPath();A.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));B.slice().reverse().forEach(p=>c.lineTo(p[0],p[1]));c.closePath();c.fillStyle=fill;c.fill()}
+ ln(c,A,col,lw,false,dash);ln(c,B,col,lw,false,dash);
+}
+function polyLen(pts){let L=0;for(let i=1;i<pts.length;i++)L+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return L}
+function polyAt(pts,d){
+ for(let i=1;i<pts.length;i++){
+  const dx=pts[i][0]-pts[i-1][0],dy=pts[i][1]-pts[i-1][1],l=Math.hypot(dx,dy)||1e-6;
+  if(d<=l||i===pts.length-1){const t=Math.min(1,d/l);return[pts[i-1][0]+dx*t,pts[i-1][1]+dy*t,dx/l,dy/l]}
+  d-=l;
+ }
+}
+function dia(c,x,y,w,h,deg){c.save();c.translate(x,y);c.rotate(deg*Math.PI/180);c.strokeStyle='#e9edf2';c.lineWidth=.5;c.strokeRect(-w/2,-h/2,w,h);c.restore()}
+function checkMark(c,pts,col){c.save();c.lineJoin='miter';c.strokeStyle=col;c.lineWidth=2.4;c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();c.strokeStyle='#000';c.lineWidth=1.1;c.stroke();c.restore()}
+function wbFix(c,x,y,ys){
+ ln(c,[[x-6.5,y],[x+6.5,y],[x+2,y+7],[x-2,y+7]],'#c06ae6',.55,true);
+ ci(c,x,y+9,1.2,'#c06ae6',.45);
+ dpipe(c,[[x,y+10.2],[x,ys]],1.3,'#d94be0',.4);
+ txt(c,'WB',x+.5,y-3.2,{s:3.2,c:'#ff9a28'});
+}
+function wcFix(c,x,y,ys){
+ c.fillStyle='#d9342b';c.fillRect(x-3.6,y,7.2,3);
+ c.beginPath();c.ellipse(x,y+6.4,4.2,3.4,0,0,7);c.fill();
+ c.fillStyle='#7a1410';c.beginPath();c.ellipse(x,y+6.6,1.7,1.4,0,0,7);c.fill();
+ dpipe(c,[[x,y+9.6],[x,ys]],1.3,'#e8392f',.4);
+ txt(c,'WC',x,y-3.2,{s:3.2,c:'#ff9a28'});
+}
+
+/* =================== fitting helpers (from the Huliot CAD photo) =================== */
+const PI2=Math.PI/2;
+function roundPath(raw,t){
+ const out=[raw[0].slice()],cor=[];
+ for(let i=1;i<raw.length-1;i++){
+  const p=raw[i],a=raw[i-1],b=raw[i+1];
+  const l1=Math.hypot(p[0]-a[0],p[1]-a[1]),l2=Math.hypot(b[0]-p[0],b[1]-p[1]);
+  const u1=[(p[0]-a[0])/l1,(p[1]-a[1])/l1],u2=[(b[0]-p[0])/l2,(b[1]-p[1])/l2];
+  const tt=Math.min(t,l1*.45,l2*.45);
+  const A=[p[0]-u1[0]*tt,p[1]-u1[1]*tt],Bp=[p[0]+u2[0]*tt,p[1]+u2[1]*tt];
+  for(let j=0;j<=7;j++){const s=j/7,q=(1-s)*(1-s),w=2*s*(1-s),e=s*s;out.push([q*A[0]+w*p[0]+e*Bp[0],q*A[1]+w*p[1]+e*Bp[1]])}
+  cor.push({A,B:Bp,v:i,p,u1,u2});
+ }
+ out.push(raw[raw.length-1].slice());
+ return{pts:out,cor};
+}
+function hubRect(c,x,y,ang,len,wid,col){c.save();c.translate(x,y);c.rotate(ang);c.fillStyle='rgba(0,0,0,.62)';c.fillRect(-len/2,-wid/2,len,wid);c.strokeStyle=col;c.lineWidth=.4;c.strokeRect(-len/2,-wid/2,len,wid);c.restore()}
+function dmk(c,x,y,sz,ang){c.save();c.translate(x,y);c.rotate(ang);c.strokeStyle='#35d04a';c.fillStyle='rgba(53,208,74,.35)';c.lineWidth=.3;c.beginPath();c.moveTo(0,-sz);c.lineTo(sz*.45,0);c.lineTo(0,sz);c.lineTo(-sz*.45,0);c.closePath();c.fill();c.stroke();c.restore()}
+function band(c,x,y,ang,w,col,len){len=len||1.5;hubRect(c,x,y,ang,len,w,col);dmk(c,x,y,Math.min(w*.4,1.5),ang)}
+function bandSeg(c,R,i,f,w,col,len){const a=R[i],b=R[i+1];band(c,a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,Math.atan2(b[1]-a[1],b[0]-a[0]),w,col,len)}
+function bandEnd(c,R,i,dEnd,w,col,len){const a=R[i],b=R[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]),u=[(b[0]-a[0])/L,(b[1]-a[1])/L];band(c,b[0]-u[0]*dEnd,b[1]-u[1]*dEnd,Math.atan2(u[1],u[0]),w,col,len)}
+function ribs(c,cor,w,col){cor.forEach(o=>{if(Math.abs(o.u1[0]*o.u2[1]-o.u1[1]*o.u2[0])<.05)return;[[o.A,o.u1],[o.B,o.u2]].forEach(([p,u])=>{c.strokeStyle=col;c.lineWidth=.35;c.beginPath();c.moveTo(p[0]+u[1]*w/2,p[1]-u[0]*w/2);c.lineTo(p[0]-u[1]*w/2,p[1]+u[0]*w/2);c.stroke()})})}
+function dim2D(c,a0,b0,off){
+ const dx=b0[0]-a0[0],dy=b0[1]-a0[1],L=Math.hypot(dx,dy),u=[dx/L,dy/L],sg=off>0?1:-1,o=Math.abs(off),n=[-u[1]*sg,u[0]*sg];
+ const p1=[a0[0]+u[0]*1.7,a0[1]+u[1]*1.7],p2=[b0[0]-u[0]*1.7,b0[1]-u[1]*1.7];
+ const a=[p1[0]+n[0]*o,p1[1]+n[1]*o],b=[p2[0]+n[0]*o,p2[1]+n[1]*o];
+ ln(c,[a,b],'#e9edf2',.3);
+ [[a,1],[b,-1]].forEach(([p,d])=>{const h=[p[0]+u[0]*d,p[1]+u[1]*d];ln(c,[[h[0]+n[0]*.4,h[1]+n[1]*.4],p,[h[0]-n[0]*.4,h[1]-n[1]*.4]],'#e9edf2',.3)});
+ txt(c,'2xD',(a[0]+b[0])/2+n[0]*1.9,(a[1]+b[1])/2+n[1]*1.9,{s:2.3,rot:Math.atan2(dy,dx)*180/Math.PI});
+}
+function arrowDown(c,x,y){ln(c,[[x,y],[x,y+2]],'#e9edf2',.5);ln(c,[[x-.7,y+1.2],[x,y+2.1],[x+.7,y+1.2]],'#e9edf2',.5)}
+
+/* =================== sheet geometry (measured from the CAD drawing) =================== */
+function sysCfg(k){
+ const n=P.N,B=SB[k],tops=[];
+ for(let i=0;i<n;i++)tops.push(B.t0+i*PITCH+(i===n-1?B.adj:0));
+ const L=tops[n-1],Y=d=>L+d,top=B.t0+B.dt,sx=B.sx,px=sx+8.4,wcx=B.wbx+21,low=L+2.5,ytop=Y(-56);
+ const head=[[sx,ytop+3.9],[sx+3.9,ytop],[px,ytop]];
+ let mainRaw,prlRaw,base;
+ if(k===1){mainRaw=[[22,top],[22,Y(11)],[30.5,Y(19.5)],[124,Y(24)]];
+  prlRaw=head.concat([[px,Y(9.4)],[px+5.2,Y(14.6)],[94.7,Y(17.5)],[100,Y(22.8)]]);base=[26,Y(15)]}
+ else if(k===2){mainRaw=[[167,top],[167,Y(13)],[175.5,Y(21.5)],[205,Y(23.5)],[207.5,Y(26)],[207.5,Y(100)]];
+  prlRaw=head.concat([[px,Y(9.2)],[px+5.2,Y(14.4)],[214,Y(16.6)],[214,Y(57)],[207.5,Y(63.5)]]);base=[171,Y(17)]}
+ else{mainRaw=[[335,top],[335,Y(10)],[335,Y(104)]];
+  prlRaw=head.concat([[px,Y(61)],[sx,Y(69.4)]]);base=[335,Y(10)]}
+ const mR=roundPath(mainRaw,1.7),pR=roundPath(prlRaw,1.6),main=mR.pts,prl=pR.pts;
+ const pe=prlRaw[prlRaw.length-1],Lm=polyLen(main);let jd=0,best=1e9;
+ const d0=Math.max(0,Lm-260);
+ for(let d=d0;d<=Lm;d+=.5){const q=polyAt(main,d),dd=Math.hypot(q[0]-pe[0],q[1]-pe[1]);if(dd<best){best=dd;jd=d}}
+ return{k,L,joinD:jd,sx,px,low,ytop,top,y1:tops[0]+2.5,x0:B.x0,x1:B.x1,tops,wbx:B.wbx,wcx,main,prl,mainRaw,prlRaw,mainCor:mR.cor,prlCor:pR.cor,base,bg:'#000',sw:2.2,psw:1.8,
+  floors:tops.map((t,i)=>{const ym=t+2.5,via=!!P.prl&&i===n-1;
+   return{t,y:ym,sim:n-i,viaPrl:via,br:via?[[wcx,ym],[px,ym]].concat(prl.filter(p=>p[1]>ym+.5)):[[wcx,ym],[sx,ym]],jn:[via?px:sx,ym],ro:[B.x1-1,t+13,'right'],trapX:B.x0+14,trapY:t+5,
+   fx:[['wb',B.wbx,t-20],['wc',wcx,t-7]]}})};
+}
+
+/* =================== static CAD art =================== */
+function drawSys(c,s){
+ const k=s.k,RED='#e8392f',WH='#e9edf2',YEL='#f2e11b',BLU='#2f3fff',MAG='#d94be0',ORG='#ff9a28',GRN='#35d04a',W=2.4,WP=2.3;
+ const n=P.N,lod=VIS.lod,L=s.L,Y=d=>L+d;
+ const yb=s.mainRaw[1][1],R=s.prlRaw,last=R.length-1,px=s.px;
+ /* stack: red above the first coupler, blue below (lower stack + drain) */
+ dpipe(c,[[s.sx,s.mainRaw[0][1]],[s.sx,yb-5]],W,RED,.45,'rgba(232,57,47,.2)');
+ dpipe(c,[[s.sx,yb-5]].concat(s.main.slice(1)),W,BLU,.45,'rgba(47,63,255,.28)');
+ if(VIS.y0<s.top+30)txt(c,P.D+'mm',s.sx-6,s.top-5,{s:3.3,c:RED});
+ /* floors: sunken slab with the branch inside it, swept tee, fixtures */
+ s.tops.forEach((t,i)=>{
+  if(t+10<VIS.y0-6||t-36>VIS.y1)return;
+  const ym=t+2.5,lowF=i===n-1&&!!P.prl;
+  rc(c,s.x0,t,s.x1-s.x0,5,WH,.5);
+  if(lod>0){if(!lowF)ln(c,[[s.sx,ym],[s.wcx,ym]],RED,.9);else ln(c,[[s.px,ym],[s.wcx,ym]],RED,.9);return}
+  ln(c,[[s.x1-3,t],[s.x1-3,t+5]],WH,.4);
+  if(lowF)dpipe(c,[[px+3.9,ym],[s.wcx,ym]],1.6,RED,.4);
+  else{ln(c,[[s.sx,ym],[s.x0,ym]],RED,.5);dpipe(c,[[s.x0,ym],[s.wcx,ym]],1.6,RED,.4);ci(c,s.sx,ym,2.1,WH,.45);ci(c,s.sx,ym,.95,null,0,GRN)}
+  ln(c,[[s.wbx-24,ym],[s.wbx-16,ym]],GRN,1.1);ci(c,s.wbx-14,ym,1.5,'#e8a0f0',.4);ln(c,[[s.wbx-14,ym],[s.wbx,ym]],MAG,1);
+  txt(c,'FD',s.wbx-17,t-3.6,{s:3.1,c:ORG});
+  wbFix(c,s.wbx,t-27,ym);wcFix(c,s.wcx,t-14,ym);
+ });
+ if(VIS.y1<L-100||VIS.y0>L+140)return;
+ if(k===2)rc(c,161.5,Y(-64.5),8,8,WH,.45);
+ /* PRL pipe */
+ if(P.prl)dpipe(c,s.prl,WP,YEL,.45,'rgba(242,225,27,.14)');
+ else dpipe(c,s.prl,WP,'#666',.4,null,[1.2,1.2]);
+
+ /* ---- stack base: 2 couplers, curved 45° bend, 2xD, coupler, curved 45° bend ---- */
+ band(c,s.sx,yb-5,PI2,W+1.4,BLU,1.4);band(c,s.sx,yb-2.7,PI2,W+1.6,BLU,1.2);
+ ribs(c,s.mainCor,W,BLU);
+ if(k<3){const a=s.mainRaw[1],b=s.mainRaw[2];bandSeg(c,s.mainRaw,1,.74,W+1.2,BLU,2.2);dim2D(c,a,b,3.6)}
+
+ /* ---- PRL line: same Huliot fittings on every system ---- */
+ if(P.prl){
+  const tee=R[0],v1=R[1];
+  band(c,s.sx,tee[1]-5.4,PI2,W+1.4,RED,1.3);
+  hubRect(c,s.sx,tee[1]-1.8,PI2,4.4,W+1.1,RED);
+  band(c,tee[0]+(v1[0]-tee[0])*.45,tee[1]+(v1[1]-tee[1])*.45,Math.atan2(v1[1]-tee[1],v1[0]-tee[0]),WP+1.1,RED,2.4);
+  arrowDown(c,s.sx,tee[1]+2.6);
+  ribs(c,s.prlCor,WP,YEL);
+  bandSeg(c,R,1,.5,WP+1.2,YEL,1.2);
+  const a2=R[2];band(c,a2[0],a2[1]+3,PI2,WP+1.4,YEL,1.4);
+  /* tee at the lowest floor: floor-1 branch enters the PRL */
+  hubRect(c,px,s.low,PI2,5.2,WP+1.0,YEL);ln(c,[[px,s.low],[px+2.2,s.low]],RED,.5);
+  band(c,px+3.0,s.low,0,2.1,RED,1.8);
+  band(c,px,s.low-4.2,PI2,WP+1.3,YEL,1.3);band(c,px,s.low+4.2,PI2,WP+1.3,YEL,1.3);
+  /* 2xD bend pair at the bottom */
+  if(k<3){bandSeg(c,R,3,.72,WP+1.2,YEL,2.2);dim2D(c,R[3],R[4],k===2?2.6:-2.9)}
+  /* end: coupler, curved 45° bend, coupler piece, 45° Y into the drain */
+  bandEnd(c,R,last-2,3.0,WP+1.3,YEL,1.3);bandSeg(c,R,last-1,.5,WP+1.1,YEL,2.2);
+  const q=polyAt(s.main,s.joinD),ma=Math.atan2(q[3],q[2]),E=R[last];
+  hubRect(c,E[0],E[1],ma,4.4,W+1.0,BLU);
+  band(c,E[0]-q[2]*3.4,E[1]-q[3]*3.4,ma,W+1.3,BLU,1.2);band(c,E[0]+q[2]*3.4,E[1]+q[3]*3.4,ma,W+1.3,BLU,1.2);
+ }
+ /* labels */
+ if(k===1){
+  txt(c,P.D+'mm',17.5,Y(-7),{s:3.3,c:RED,rot:-90});txt(c,P.prlD+'mm',px+5.4,Y(-37),{s:3.3,c:YEL,rot:-90});
+  txt(c,'125mm',44,Y(29),{s:3.3,c:BLU});txt(c,'125mm',112,Y(29),{s:3.3,c:BLU});txt(c,'SLOP 1/80',47,Y(34.5),{s:2.6});ln(c,[[129,Y(18)],[135,Y(18)]],WH,.5);
+  caption(c,58,Y(56),65,Y(65),[117,Y(54)],[124,Y(62)],[146,Y(45)]);
+ }
+ if(k===2){
+  txt(c,P.D+'mm',163.5,Y(-35),{s:3.3,c:RED,rot:-90});txt(c,P.prlD+'mm',px+5.6,Y(-38),{s:3.3,c:YEL,rot:-90});
+  txt(c,'125mm',184,Y(36),{s:3.3,c:BLU});txt(c,'SLOP 1/80',192,Y(30),{s:2.6});
+  caption(c,191.5,Y(116.5),206,Y(125),[260,Y(115)],[268,Y(124)],[288,Y(104)]);
+ }
+ if(k===3){
+  txt(c,P.D+'mm',331,Y(-35),{s:3.3,c:RED,rot:-90});txt(c,P.prlD+'mm',px+5.6,Y(-36.5),{s:3.3,c:YEL,rot:-90});
+  txt(c,'SLOP 1/80',361,Y(30),{s:2.6});
+  caption(c,386.7,Y(79),394,Y(87),[448,Y(77)],[457,Y(86)],[476,Y(67)]);
+ }
+}
+function caption(c,x1,y1,x2,y2,a,b,d){
+ if(P.prl){
+  txt(c,'HULIOT STANDARD',x1,y1,{s:6.4,c:'#18d83a'});txt(c,'(Using 90 deg bend at pressure relief line)',x2,y2,{s:3.4});
+  checkMark(c,[a,b,d],'#18d83a');
+ }else{
+  txt(c,'NO PRL FITTED',x1,y1,{s:6.4,c:'#ff6b6b'});txt(c,'(base pressure not relieved)',x2,y2,{s:3.4});
+ }
+}
+function drawSheet(c){
+ const HS=HSheet();
+ c.fillStyle='#000';c.fillRect(0,0,477,HS);
+ rc(c,3,2,471,HS-4,'#d92b2b',.8);
+ txt(c,'Sunken with Huliot Swept Tee system',205,16,{s:11});
+ txt(c,P.N+' floors',470,16,{s:6.5,c:'#18d83a',a:'right',b:1});
+ OPTS.forEach(k=>{const s=CFG[k],on=SEL===k;drawSys(c,s);
+  const ty=s.L+{1:56,2:116.5,3:79}[k]-19;
+  if(ty+10<VIS.y0||ty>VIS.y1)return;
+  const tx={1:58,2:245,3:386.7}[k];rc(c,tx-17,ty,34,9,on?'#18d83a':'#555',on?.9:.5,on?'rgba(24,216,58,.15)':null);txt(c,'SYSTEM '+SYSNAME[k],tx,ty+4.7,{s:4.6,c:on?'#18d83a':'#8d98a6',b:on});});
+ if(P.tee!=='swept')txt(c,'(standard 87.5° tees in the model)',205,39,{s:4,c:'#ff9a28'});
+}
+
+/* =================== live overlay =================== */
+function glow(c,x,y,p){
+ if(Math.abs(p)<4)return;const r=6+Math.min(60,Math.abs(p))*.17,col=p>0?'232,57,47':'74,115,255';
+ const gr=c.createRadialGradient(x,y,.6,x,y,r);gr.addColorStop(0,'rgba('+col+','+Math.min(.5,Math.abs(p)/70)+')');gr.addColorStop(1,'rgba('+col+',0)');
+ c.fillStyle=gr;c.fillRect(x-r,y-r,2*r,2*r);
+}
+function drawTrap(c,x,y0,yy,sl,bg){
+ const dp=6.5,w=2.4,lost=sl<25,col=lost?'#ff6b6b':cv2(yy);
+ const lb=y0+dp-.8-Math.max(0,sl*.04),dy=Math.max(-1.8,Math.min(1.8,yy*.05));
+ const ll=Math.max(y0+.6,lb-dy),lr=Math.max(y0+.6,lb+dy);
+ const U=[[x-w,y0],[x-w,y0+dp],[x+w,y0+dp],[x+w,y0]];
+ ln(c,U,col,2.4);ln(c,U,bg,1.3);
+ ln(c,[[x-w,ll],[x-w,y0+dp],[x+w,y0+dp],[x+w,lr]],'#5fd8ff',1.3);
+}
+function overlay(c,k){
+ const g=CFG[k],O=OS[k],N=P.N,e0=env(TL.t-TL.t0),ge=Math.min(1,e0*1.1),p0=O.tgt[0],lod=VIS.lod;
+ const fAt=y=>Math.max(1,Math.min(N,N-(y-g.y1)/PITCH));
+ const pAt=f=>{f=Math.max(1,Math.min(N,f));const a=Math.floor(f),b=Math.ceil(f),t=f-a;return O.tgt[a-1]*(1-t)+O.tgt[b-1]*t};
+ const Lp=polyLen(g.main);
+ c.lineCap='butt';
+ const stp=lod===0?2:lod===1?4:8;
+ for(let d=0;d<Lp;d+=stp){
+  const a=polyAt(g.main,d);if(a[1]<VIS.y0-12||a[1]>VIS.y1+12)continue;const b=polyAt(g.main,Math.min(Lp,d+stp+.2)),p=pAt(fAt(a[1])),al=Math.min(.6,Math.abs(p)/55);
+  if(al<.03)continue;c.strokeStyle=p>0?'rgba(232,57,47,'+al+')':'rgba(74,115,255,'+al+')';c.lineWidth=g.sw;
+  c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(b[0],b[1]);c.stroke();
+ }
+ if(P.prl){const al=Math.min(.5,Math.abs(p0)/55);if(al>=.03)ln(c,g.prl,p0>0?'rgba(232,57,47,'+al+')':'rgba(74,115,255,'+al+')',g.psw)}
+ /* falling water */
+ TL.wat.forEach((s,i)=>{
+  const pt=polyAt(g.main,s*Lp);if(!pt||pt[1]<VIS.y0-6||pt[1]>VIS.y1+6)return;
+  const f=fAt(pt[1]),above=TL.fa>=2,low1=TL.act.includes(1)&&e0>.05;
+  const eA=above&&f<=TL.fa+.5?ef(f):0,eL=(low1&&(P.prl?s*Lp>=g.joinD:pt[1]>=g.low))?e0:0,e=Math.max(eA,eL);if(e<.1)return;
+  const off=(i%2?-1:1)*(g.sw*.5-.15-((i*13)%5)*.06),nx=-pt[3],ny=pt[2],x=pt[0]+nx*off,y=pt[1]+ny*off;
+  c.strokeStyle='#5fd8ff';c.globalAlpha=Math.min(1,e);c.lineWidth=.8;c.lineCap='round';
+  c.beginPath();c.moveTo(x,y);c.lineTo(x+pt[2]*2.4,y+pt[3]*2.4);c.stroke();c.globalAlpha=1;c.lineCap='butt';
+ });
+ /* air chevrons in the stack core */
+ const a0=g.main.slice(0,2),La=polyLen(a0);
+ TL.air.forEach((u,i)=>{
+  const pt=polyAt(a0,u*La),x=pt[0]+((i%3)-1)*g.sw*.2,y=pt[1];if(y<VIS.y0-4||y>VIS.y1+4)return;
+  c.strokeStyle='#e9edf2';c.globalAlpha=.55*ge;c.lineWidth=.45;c.beginPath();c.moveTo(x-1.1,y-1);c.lineTo(x,y+.8);c.lineTo(x+1.1,y-1);c.stroke();c.globalAlpha=1;
+ });
+ /* PRL air relief */
+ if(P.prl){
+  const rp=g.prl.slice().reverse(),Lq=polyLen(rp),act=Math.max(0,Math.min(1,p0/20));
+  if(act>.05){c.save();c.shadowColor='#f2e11b';c.shadowBlur=8*act;ln(c,g.prl,'rgba(242,225,27,'+(.4*act)+')',g.psw);c.restore()}
+  O.prlp.forEach(u=>{const pt=polyAt(rp,u*Lq);if(!pt)return;c.fillStyle='#f2e11b';c.globalAlpha=.25+.75*act;c.beginPath();c.arc(pt[0],pt[1],.85,0,7);c.fill();c.globalAlpha=1});
+ }
+ /* floors */
+ const LS=Math.min(12,Math.max(3.8,7/VP.s)),LK=Math.max(1,Math.ceil(LS*1.7/PITCH));
+ g.floors.forEach(fl=>{
+  if(fl.t+10<VIS.y0-6||fl.t-36>VIS.y1)return;
+  const i=fl.sim-1,p=O.tgt[i],y=O.y[i],sl=O.seal[i],lost=sl<25,on=TL.act.includes(fl.sim)&&e0>.05;
+  if(lod>0){
+   glow(c,fl.jn[0],fl.jn[1],p);const col=lost?'#ff6b6b':cv2(y);c.fillStyle=col;c.beginPath();c.arc(fl.jn[0],fl.jn[1],lod>1?3:2,0,7);c.fill();
+   if(on)ci(c,fl.jn[0],fl.jn[1],lod>1?5.5:3.6,'#5fd8ff',.8);
+   if(fl.sim%LK===0||fl.sim===N||fl.sim===1)txt(c,'F'+fl.sim,g.x1-1,fl.t-LS*.6,{s:LS,a:'right',c:col});
+   return;
+  }
+  if(on){
+   const Lb=polyLen(fl.br);
+   if(fl.viaPrl)ln(c,fl.br.slice(1),'rgba(95,216,255,'+(.35*e0)+')',1.1);
+   const nd=Math.max(6,Math.round(Lb/12));
+   for(let kk=0;kk<nd;kk++){const ph=(TL.t*TL.speed*60/Lb+kk/nd)%1,pt=polyAt(fl.br,ph*Lb);c.fillStyle='#5fd8ff';c.globalAlpha=Math.min(1,e0);c.beginPath();c.arc(pt[0],pt[1],.75,0,7);c.fill();c.globalAlpha=1}
+   fl.fx.forEach(([t,x,yy])=>{c.fillStyle='rgba(95,216,255,'+(.2+.5*e0)+')';c.beginPath();c.ellipse(x,yy+(t==='wb'?3:5),t==='wb'?5:3.6,t==='wb'?2.6:3.6,0,0,7);c.fill()});
+  }
+  glow(c,fl.jn[0],fl.jn[1],p);
+  const wcf=fl.fx.find(f=>f[0]==='wc');
+  if(y>35&&wcf){c.fillStyle='rgba(95,216,255,.9)';for(let q=0;q<3;q++){c.beginPath();c.arc(wcf[1]-2.5+Math.random()*5,wcf[2]-3-Math.random()*6,.7,0,7);c.fill()}}
+  txt(c,'F'+fl.sim+'  '+(y>=0?'+':'')+y.toFixed(0)+' mm',fl.ro[0],fl.ro[1]-2,{s:3.8,a:fl.ro[2],c:lost?'#ff6b6b':cv2(y)});
+  txt(c,lost?'SEAL LOST':'seal '+sl.toFixed(0),fl.ro[0],fl.ro[1]+2.6,{s:3.4,a:fl.ro[2],c:lost?'#ff6b6b':'#9aa6b4'});
+  drawTrap(c,fl.trapX,fl.trapY,y,sl,g.bg);
+ });
+ glow(c,g.base[0],g.base[1],p0);
+}
+function setupSheet(){
+ const sw=$('sw'),cv=$('sheet'),sp=$('spacer');
+ const W=Math.max(220,sw.clientWidth),HS=HSheet(),cap=Math.max(380,Math.round(innerHeight*.78));
+ let s,wantH,spW,spH,b=null;
+ if(VIEW==='full'){s=Math.min(Math.max(W,640),1000)/477;spW=Math.max(477*s,W);spH=Math.ceil(HS*s);wantH=Math.min(spH,cap)}
+ else if(VIEW==='fit'){s=Math.min(W/477,cap/HS,1000/477);wantH=Math.round(HS*s);spW=W;spH=wantH}
+ else{b=zoomBox(SEL);s=Math.min(Math.min(W,820)/b[2],cap/b[3]);wantH=Math.round(b[3]*s);spW=W;spH=wantH}
+ wantH=Math.max(120,Math.round(wantH));
+ const hh=(wantH+2)+'px',sww=Math.round(spW)+'px',shh=spH+'px';
+ if(sw.style.height!==hh)sw.style.height=hh;if(sp.style.width!==sww)sp.style.width=sww;if(sp.style.height!==shh)sp.style.height=shh;
+ const CW=sw.clientWidth,CH=sw.clientHeight;
+ if(VIEW==='full'&&PEND){const p=PEND;PEND=null;
+  if(p.f){sw.scrollTop=Math.max(0,(SB[1].t0+(P.N-p.f)*PITCH+2.5)*s-CH/2)}
+  else if(p.top)sw.scrollTop=0;else if(p.bot)sw.scrollTop=1e9;else{sw.scrollLeft=p.x||0;sw.scrollTop=p.y||0}}
+ else if(VIEW!=='full')PEND=null;
+ let sx,sy;
+ if(VIEW==='full'){sx=sw.scrollLeft-Math.max(0,(CW-477*s)/2);sy=sw.scrollTop}
+ else if(VIEW==='fit'){sx=-(CW-477*s)/2;sy=0}
+ else{sx=b[0]*s-(CW-b[2]*s)/2;sy=b[1]*s}
+ const dpr=Math.min(2,window.devicePixelRatio||1),bw=Math.round(CW*dpr),bh=Math.round(CH*dpr);
+ if(cv.width!==bw||cv.height!==bh){cv.width=bw;cv.height=bh}
+ cv.style.width=CW+'px';cv.style.height=CH+'px';
+ VP={s,sx,sy,W:CW,H:CH};MINW=.55/s;VIS={y0:sy/s,y1:(sy+CH)/s,lod:s<.2?2:s<.5?1:0};
+ const c=cv.getContext('2d');c.setTransform(1,0,0,1,0,0);c.fillStyle='#000';c.fillRect(0,0,bw,bh);
+ c.setTransform(dpr*s,0,0,dpr*s,-dpr*sx,-dpr*sy);return c;
+}
+
+/* =================== charts (selected system) =================== */
+function setup(cv,hh){const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=hh||cv.clientHeight;
+ if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr)}
+ const c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,W,H);return{c,W,H}}
+function chartLimits(){const O=OS[SEL];return Math.max(40,Math.ceil(Math.max(...RR[SEL].pr.map(Math.abs),...AA[SEL].pr.map(Math.abs),O.pk,O.pn)/10)*10)}
+function drawProfile(){
+ const {c,W,H}=setup($('cp'),230),O=OS[SEL],R=RR[SEL],A=AA[SEL];
+ const N=P.N,lim=chartLimits(),L=38,Rr=W-10,T=10,B=H-28;
+ const X=v=>L+(v+lim)/(2*lim)*(Rr-L),Y=f=>B-(f-1)/Math.max(1,N-1)*(B-T);
+ c.font='11px system-ui';
+ c.fillStyle=C['--er'];c.globalAlpha=.08;c.fillRect(X(25),T,Rr-X(25),B-T);c.fillRect(L,T,X(-25)-L,B-T);c.globalAlpha=1;
+ c.strokeStyle=C['--bd'];c.fillStyle=C['--mut'];c.textAlign='center';c.lineWidth=1;
+ for(let v=-lim;v<=lim;v+=lim/2){c.beginPath();c.moveTo(X(v),T);c.lineTo(X(v),B);c.stroke();c.fillText(Math.round(v),X(v),H-12)}
+ c.strokeStyle=C['--tx'];c.beginPath();c.moveTo(X(0),T);c.lineTo(X(0),B);c.stroke();
+ c.textAlign='right';[1,Math.round(N/2),N].forEach(f=>c.fillText('F'+f,L-4,Y(f)+4));
+ c.textAlign='center';c.fillText('Pressure (mm water gauge)',(L+Rr)/2,H-1);
+ const line=(arr,col,dash,w)=>{c.strokeStyle=col;c.lineWidth=w;c.setLineDash(dash);c.beginPath();for(let i=0;i<N;i++){const x=X(arr[i]),y=Y(i+1);i?c.lineTo(x,y):c.moveTo(x,y)}c.stroke();c.setLineDash([])};
+ line(A.pr,C['--wa'],[2,4],1.6);line(R.pr,C['--mut'],[5,4],1.8);
+ line(O.pmx,C['--er'],[],1);line(O.pmn,C['--er'],[],1);line(O.tgt,C['--ac'],[],2.6);
+}
+function drawScope(){
+ const {c,W,H}=setup($('cs'),150),O=OS[SEL];
+ const lim=chartLimits(),L=34,Rr=W-8,T=8,B=H-18;
+ const Y=v=>B-(v+lim)/(2*lim)*(B-T);
+ c.font='11px system-ui';c.fillStyle=C['--mut'];c.textAlign='right';
+ [-lim,0,lim].forEach(v=>{c.strokeStyle=C['--bd'];c.beginPath();c.moveTo(L,Y(v));c.lineTo(Rr,Y(v));c.stroke();c.fillText(Math.round(v),L-4,Y(v)+4)});
+ c.setLineDash([4,4]);c.strokeStyle=C['--er'];c.globalAlpha=.6;[25,-25].forEach(v=>{c.beginPath();c.moveTo(L,Y(v));c.lineTo(Rr,Y(v));c.stroke()});c.setLineDash([]);c.globalAlpha=1;
+ const n=O.hist.length;if(n<2)return;
+ const X=i=>L+i/399*(Rr-L);
+ [[0,C['--er']],[1,C['--ac']]].forEach(([k,col])=>{c.strokeStyle=col;c.lineWidth=2;c.beginPath();O.hist.forEach((h,i)=>{const x=X(i+400-n),y=Y(h[k]);i?c.lineTo(x,y):c.moveTo(x,y)});c.stroke()});
+ c.textAlign='center';c.fillStyle=C['--mut'];c.fillText('← time',(L+Rr)/2,H-3);
+}
+
+/* =================== readouts =================== */
+function updateDOM(full){
+ updateGrid();
+ OPTS.forEach(k=>{
+  const O=OS[k],R=RR[k];if(!O||!R)return;
+  let lost=0;for(let i=0;i<P.N;i++)if(O.seal[i]<25)lost++;
+  const v=verdictOf(R.bad);
+  $('cap'+k).innerHTML=`Design case <b style="color:${v[2]}">${v[0]}</b> · peak +${R.mx.toFixed(0)} / ${R.mn.toFixed(0)} mm<br>seals lost ${lost}/${P.N} · recorded peak +${O.pk.toFixed(0)} mm`;
+ });
+ const O=OS[SEL],R=RR[SEL];if(!O||!R)return;
+ const v=verdictOf(R.bad),vd=$('verdict');
+ vd.textContent='SYSTEM '+SYSNAME[SEL]+' · DESIGN CASE '+v[0]+': peak '+(R.mx>=-R.mn?'+'+R.mx.toFixed(0):R.mn.toFixed(0))+' mm WG (limit ±25)';vd.style.background=v[1];
+ $('ptitle').textContent='Live pressure along stack · System '+SYSNAME[SEL];$('gtitle').textContent='Floor status · System '+SYSNAME[SEL];
+ let mx=-1e9,mn=1e9,lost=0;
+ for(let i=0;i<P.N;i++){const t=O.tgt[i];if(t>mx)mx=t;if(t<mn)mn=t;if(O.seal[i]<25)lost++}
+ $('kpi').innerHTML=
+  `<div><span>Now max +</span><strong>${mx.toFixed(0)} mm</strong></div><div><span>Now max −</span><strong>${mn.toFixed(0)} mm</strong></div><div><span>Seals lost</span><strong style="color:${lost?'var(--er)':'inherit'}">${lost} / ${P.N}</strong></div>`+
+  `<div><span>Peak + (recorded)</span><strong>${O.pk.toFixed(0)} mm</strong></div><div><span>Peak − (recorded)</span><strong>${(-O.pn).toFixed(0)} mm</strong></div><div><span>Stack load</span><strong>${(R.fill*100).toFixed(0)}%</strong></div>`;
+ if(full){
+  const r=[];
+  if(R.fill>1)r.push('Stack is overloaded ('+(R.fill*100).toFixed(0)+'% of ~'+R.Qcap.toFixed(1)+' L/s). Use a larger stack or a parallel vent stack.');
+  if(R.mx>=25)r.push('Positive pressure at lower floors: '+(P.prl?'increase PRL size or add a second relief/vent connection at the base':'fit a PRL (110 mm) from the base to the upper stack')+(SEL!==3?'. System C (straight stack, PRL rejoining at the base) relieves best in this model.':'.'));
+  if(-R.mn>=25)r.push('Negative pressure at upper floors: open the stack top fully, avoid AAV only, and add cross-vents every 5–8 floors.');
+  if(P.tee!=='swept')r.push('Standard 87.5° tees add branch entry loss and surge. Swept tees (as in the drawing) reduce both.');
+  if(P.sewer>5)r.push('Sewer back pressure is adding to the base pressure. Check surcharge and sewer venting.');
+  if(!r.length)r.push('No major issue in this model. Verify with on-site manometer readings.');
+  $('recs').innerHTML=r.map(x=>'<li>'+x+'</li>').join('');
+ }
+}
+
+/* =================== main loop =================== */
+function frame(ts){
+ const now=ts/1000,dt=Math.min(0.05,now-last||0.016);last=now;
+ if(TL.run)step(dt*TL.speed);
+ ensureCfg();
+ const c=setupSheet();drawSheet(c);OPTS.forEach(k=>overlay(c,k));
+ drawProfile();drawScope();
+ if(fcount++%5===0)updateDOM(false);
+ requestAnimationFrame(frame);
+}
+colors();syncUI();ensureCfg();recalc();initAll();buildGrid();updateDOM(true);
+requestAnimationFrame(frame);
+</script></body></html>
