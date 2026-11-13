@@ -1,0 +1,18 @@
+{
+  "_how_to_add": "Naya simulator add karne ke liye: 1) HTML file sims/ folder me rakho. 2) Is list me ek entry jodo. Bas. status 'soon' rakhoge to card 'Coming soon' dikhega.",
+  "site": {"name": "Huliot Simulators", "tagline": "Drainage ke live simulators. Kholo, floors badlo, result dekho."},
+  "simulators": [
+    {"id": "sunken-swept-tee", "title": "Sunken + Swept Tee System", "file": "sims/sunken-swept-tee.html", "status": "live", "featured": true, "added": "2026-11-07",
+     "description": "Aapki CAD sheet ka live version. 2 se 100 floors set karo, 3 PRL systems (A, B, C) ek saath, live pressure, trap seal aur Huliot fittings.",
+     "tags": ["Drainage", "PRL", "Swept tee", "High-rise"]},
+    {"id": "prl-options", "title": "PRL Options Live", "file": "sims/prl-options.html", "status": "live", "added": "2026-11-06",
+     "description": "PRL ke 3 arrangements ek hi flush par compare karo, slide jaisa animation ke saath.",
+     "tags": ["Drainage", "PRL"]},
+    {"id": "stack-prl", "title": "Drainage Stack with PRL", "file": "sims/stack-prl.html", "status": "live", "added": "2026-11-06",
+     "description": "Single stack ka live pressure simulator, PRL on/off ke saath.",
+     "tags": ["Drainage", "Single stack", "PRL"]},
+    {"id": "stack-basic", "title": "Drainage Stack Live", "file": "sims/stack-basic.html", "status": "live", "added": "2026-11-06",
+     "description": "Single stack ka basic live pressure simulator. Floors, flow, vent aur trap seal badal ke dekho.",
+     "tags": ["Drainage", "Single stack"]}
+  ]
+}

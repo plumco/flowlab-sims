@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drainage Stack Live Simulator</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#14181f;--mut:#5b6573;--bd:#d9dee5;--ac:#1f6feb;--ok:#2e9e5b;--wa:#e0a100;--er:#d63b3b;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101419;--card:#1a2029;--tx:#e8ecf1;--mut:#9aa6b4;--bd:#2c3542;--ac:#5aa2ff;--ok:#4cc582;--wa:#f0b72f;--er:#ff6b6b}}
+:root[data-theme="dark"]{--bg:#101419;--card:#1a2029;--tx:#e8ecf1;--mut:#9aa6b4;--bd:#2c3542;--ac:#5aa2ff;--ok:#4cc582;--wa:#f0b72f;--er:#ff6b6b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:12px;max-width:900px;margin:auto}
+h1{font-size:19px;margin:4px 0 2px}.sub{color:var(--mut);font-size:13px;margin-bottom:10px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:12.5px;color:var(--mut)}label b{color:var(--tx);float:right}
+input[type=range]{width:100%}
+select{width:100%;padding:6px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)}
+button{font:inherit;font-size:14px;padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);cursor:pointer}
+button.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:8px}
+.row>div{flex:1;min-width:110px}
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.kpi div{background:var(--bg);border-radius:8px;padding:8px 4px}.kpi span{display:block;font-size:11px;color:var(--mut)}.kpi strong{font-size:17px}
+canvas{width:100%;display:block}
+#cv{height:470px}#cp{height:230px}#cs{height:150px}
+.floors{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+.floors div{font-size:11px;text-align:center;border-radius:5px;padding:4px 0;color:#fff}
+.verdict{padding:10px;border-radius:8px;font-weight:600;color:#fff;margin-bottom:8px}
+.note{font-size:12px;color:var(--mut)}ul{margin:6px 0 0 18px;padding:0}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+details summary{cursor:pointer;font-weight:600}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.chips button{font-size:12.5px;padding:6px 10px}
+</style></head><body><style>.hub-back{position:fixed;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:99;background:#1f6feb;color:#fff;font:600 13px system-ui,sans-serif;padding:8px 12px;border-radius:20px;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.3)}</style><a class="hub-back" href="https://claude.ai/artifact/CwDQXj6etUUZjSixqyweAR">← All simulators</a>
+<h1>Drainage Stack Live Simulator</h1>
+<div class="sub">Animated single-stack screening model: flush wave, air entrainment, trap bounce, seal loss</div>
+
+<div class="card">
+ <div class="row">
+  <button class="pri" id="bPlay">⏸ Pause</button>
+  <button id="bFlush">💧 Flush now</button>
+  <button id="bReset">↺ Refill traps</button>
+ </div>
+ <div class="row">
+  <div><label>Flush mode</label><select id="mode"><option value="cycle">Repeating flushes</option><option value="single">Single (manual)</option><option value="hold">Continuous load</option></select></div>
+  <div><label>Speed <b id="v_speed">1×</b></label><input type="range" id="speed" min="0.2" max="3" step="0.1" value="1"></div>
+ </div>
+ <canvas id="cv"></canvas>
+ <div class="note"><span class="sw" style="background:rgba(60,150,255,.8)"></span>Water film &nbsp;<span class="sw" style="background:rgba(214,59,59,.6)"></span>Positive air pressure &nbsp;<span class="sw" style="background:rgba(31,111,235,.6)"></span>Suction &nbsp;· Fall time is compressed ~3× for viewing. Tap the stack picture to start a flush.</div>
+</div>
+
+<div class="card">
+ <div id="verdict" class="verdict"></div>
+ <div class="kpi" id="kpi"></div>
+</div>
+
+<div class="card"><b>Live pressure along stack</b>
+ <canvas id="cp"></canvas>
+ <div class="note"><span class="sw" style="background:var(--ac)"></span>Live &nbsp;<span class="sw" style="background:var(--mut)"></span>Design peak (current setup) &nbsp;<span class="sw" style="background:var(--wa)"></span>What-if PRL toggled</div>
+</div>
+
+<div class="card"><b>Pressure history</b> <span class="note">(max / min over all floors)</span>
+ <canvas id="cs"></canvas>
+</div>
+
+<div class="card"><b>Floor status now</b> <span class="note">(mm WG, floor 1 = bottom)</span>
+ <div class="floors" id="floors" style="margin-top:8px"></div>
+ <div class="note" style="margin-top:6px">Green &lt; 25, amber 25–40, red &gt; 40 (EN 12056 uses ±25 mm). Residual trap seal below 25 mm counts as lost.</div>
+ <ul id="recs"></ul>
+</div>
+
+<div class="card">
+ <details open><summary>Scenario &amp; inputs</summary>
+  <div class="chips" style="margin-top:10px" id="presets"></div>
+  <div class="grid" id="inputs"></div>
+  <div class="row" style="margin-top:10px"><button id="bCsv">⬇ Peak data CSV</button><button id="bPeak">Clear peaks</button></div>
+ </details>
+</div>
+
+<div class="card note"><b>Limits:</b> quasi-steady air-entrainment model with a dynamic surge multiplier and a damped trap oscillator. Not calibrated to AIRNET or site data. Use it to compare options (PRL size, vent, stack size, bend), not for final design. Confirm with on-site pressure readings.</div>
+
+<script>
+const P={N:32,H:3,D:110,nAct:4,qf:1.0,seal:50,vent:'open',prl:1,prlD:110,bend:'long',surge:2.5,sewer:0,pattern:'random'};
+const defs=[
+['N','Floors',8,60,1,v=>v],['H','Floor height (m)',2.5,4,0.1,v=>v+' m'],
+['nAct','Floors discharging together',1,32,1,v=>v],['qf','Flow per floor (L/s)',0.3,3,0.1,v=>v+' L/s'],
+['surge','Dynamic surge factor',1,4,0.1,v=>v+'×'],['sewer','Sewer back pressure (mm WG)',0,40,1,v=>v]
+];
+const sels=[
+['D','Stack diameter',[[100,'100 mm'],[110,'110 mm'],[125,'125 mm'],[150,'150 mm']]],
+['seal','Trap seal depth',[[50,'50 mm'],[75,'75 mm']]],
+['vent','Top of stack',[['open','Open to atmosphere'],['aav','Air admittance valve'],['blocked','Restricted / blocked']]],
+['bend','Base bend',[['long','Long radius'],['short','Short / tight bend'],['offset','Bend + offset']]],
+['prl','Pressure relief line (PRL)',[[1,'Fitted'],[0,'Not fitted']]],
+['prlD','PRL diameter',[[110,'110 mm'],[75,'75 mm'],[50,'50 mm']]],
+['pattern','Which floors flush',[['random','Random floors'],['top','Top floors'],['bottom','Bottom floors'],['spread','Evenly spread']]]
+];
+const presets=[
+['Baseline',{N:32,H:3,D:110,nAct:4,qf:1,seal:50,vent:'open',prl:1,prlD:110,bend:'long',surge:2.5,sewer:0,pattern:'random'}],
+['Well designed',{N:32,H:3,D:150,nAct:4,qf:1,seal:75,vent:'open',prl:1,prlD:110,bend:'long',surge:2.5,sewer:0,pattern:'random'}],
+['No PRL',{prl:0}],
+['Tight bend + offset',{bend:'offset'}],
+['Blocked vent',{vent:'blocked'}],
+['AAV only, tall',{N:45,vent:'aav',prl:0,bend:'short',nAct:8}],
+['Sewer surcharge',{sewer:30}],
+['Heavy peak',{nAct:12,qf:1.5,D:110,pattern:'top'}]
+];
+const TS=0.3,RISE=0.8,HOLD=3,TAU=1.2;
+let R,A,S,C={},last=0,fcount=0;
+
+/* ---------- UI ---------- */
+const box=document.getElementById('inputs');
+defs.forEach(([k,l,mn,mx,st,f])=>{const d=document.createElement('div');d.innerHTML=`<label>${l}<b id="v_${k}">${f(P[k])}</b></label><input type="range" min="${mn}" max="${mx}" step="${st}" value="${P[k]}" id="i_${k}">`;box.appendChild(d);
+ d.querySelector('input').oninput=e=>{P[k]=+e.target.value;document.getElementById('v_'+k).textContent=f(P[k]);onParam(k)}});
+sels.forEach(([k,l,o])=>{const d=document.createElement('div');d.innerHTML=`<label>${l}</label><select id="s_${k}">${o.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select>`;box.appendChild(d);
+ d.querySelector('select').onchange=e=>{const v=e.target.value;P[k]=isNaN(v)?v:+v;onParam(k)}});
+function syncUI(){
+ defs.forEach(([k,,, ,,f])=>{document.getElementById('i_'+k).value=P[k];document.getElementById('v_'+k).textContent=f(P[k])});
+ sels.forEach(([k])=>{document.getElementById('s_'+k).value=String(P[k])});
+}
+const pb=document.getElementById('presets');
+presets.forEach(([n,o],i)=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>{if(i==0||Object.keys(o).length>6)Object.assign(P,o);else{Object.assign(P,presets[0][1],o)}syncUI();onParam('N');S.run=true;setPlayLabel()};pb.appendChild(b)});
+function onParam(k){
+ if(k==='N'||k==='seal'||k==='nAct'||k==='pattern'){const run=S?S.run:true,sp=S?S.speed:1,md=S?S.mode:'cycle';initState();S.run=run;S.speed=sp;S.mode=md}
+ recalc();
+}
+const $=id=>document.getElementById(id);
+function setPlayLabel(){$('bPlay').textContent=S.run?'⏸ Pause':'▶ Play'}
+$('bPlay').onclick=()=>{S.run=!S.run;setPlayLabel()};
+$('bFlush').onclick=()=>{S.run=true;setPlayLabel();pickActive()};
+$('bReset').onclick=()=>{S.seal.fill(P.seal);S.y.fill(0);S.v.fill(0)};
+$('bPeak').onclick=()=>{S.pk=0;S.pn=0;S.pmx.fill(0);S.pmn.fill(0);S.hist=[]};
+$('mode').onchange=e=>{S.mode=e.target.value;pickActive()};
+$('speed').oninput=e=>{S.speed=+e.target.value;$('v_speed').textContent=S.speed.toFixed(1)+'×'};
+$('cv').onclick=()=>{S.run=true;setPlayLabel();pickActive()};
+$('bCsv').onclick=()=>{let s='floor,peak_positive_mm,peak_negative_mm,residual_seal_mm\n';for(let i=0;i<P.N;i++)s+=`${i+1},${S.pmx[i].toFixed(1)},${S.pmn[i].toFixed(1)},${S.seal[i].toFixed(1)}\n`;
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv'}));a.download='stack_peaks.csv';a.click()};
+
+/* ---------- Physics (steady screening model) ---------- */
+function sim(p){
+ const g=9.81,rho=1.2,nu=1e-6,L=p.N*p.H;
+ const D=(p.D-6)/1000,Q=Math.min(p.nAct,p.N)*p.qf/1000;
+ const t=Math.cbrt(3*nu*Q/(Math.PI*D*9.81));
+ const Vt=0.75*Q/(Math.PI*D*t);
+ const Dc=D-2*t;
+ const Qcap=4.0*Math.pow(p.D/110,8/3),fill=Q*1000/Qcap;
+ const Kin={open:0.8,aav:4,blocked:25}[p.vent];
+ const Kb={long:0.5,short:1.2,offset:2.2}[p.bend];
+ const Kj=10*Math.min(2,Math.max(0.3,Q*1000/3));
+ let Kbase=Kb+Kj;
+ if(p.prl){const r=Math.pow(p.prlD/p.D,2);Kbase=Kbase/Math.pow(1+1.5*r,2)*(1+0.02*2)}
+ const fi=0.05,fw=0.02,K=Kin+Kbase,a=0.5*rho;
+ let lo=0,hi=Vt;
+ for(let i=0;i<60;i++){const m=(lo+hi)/2;const f=fi*(L/Dc)*a*(Vt-m)**2-fw*(L/D)*a*m*m-K*a*m*m;if(f>0)lo=m;else hi=m}
+ const Va=(lo+hi)/2,q=a*Va*Va;
+ const Qa=Va*Math.PI*Dc*Dc/4*1000;
+ const Ptop=-Kin*q*p.surge/g,Pb0=(Kbase*q*p.surge)/g;
+ const pr=[],prDyn=[],sw=[];
+ for(let f=1;f<=p.N;f++){const s=(p.N-f)/Math.max(1,p.N-1);const w=Math.pow(s,1.6);
+  const d=Ptop+(Pb0-Ptop)*w,sv=p.sewer*w;prDyn.push(d);sw.push(sv);pr.push(d+sv)}
+ return{pr,prDyn,sw,Ptop,Pbase:Pb0+p.sewer,Vt,Qa,fill,Q:Q*1000,Qcap,Va,Kbase,th:t};
+}
+function recalc(){
+ R=sim(P);A=sim({...P,prl:P.prl?0:1});
+ const mx=Math.max(...R.pr),mn=Math.min(...R.pr),bad=Math.max(mx,-mn);
+ const vd=$('verdict');let m,c;
+ if(bad<25){m='DESIGN CASE PASS: peak within ±25 mm WG';c='var(--ok)'}
+ else if(bad<40){m='DESIGN CASE MARGINAL: exceeds ±25 mm WG, trap disturbance likely';c='var(--wa)'}
+ else{m='DESIGN CASE FAIL: severe swing, WC water jump / seal loss likely';c='var(--er)'}
+ vd.textContent=m;vd.style.background=c;
+ R.mx=mx;R.mn=mn;
+ const rc=[];
+ if(R.fill>1)rc.push('Stack is overloaded ('+(R.fill*100).toFixed(0)+'% of ~'+R.Qcap.toFixed(1)+' L/s). Use a larger stack or a parallel vent stack.');
+ if(mx>=25)rc.push('Positive pressure at lower floors: '+(P.prl?'increase PRL size or add a second relief/vent connection at the base':'fit a PRL (110 mm) from the base to the upper stack')+', use a long-radius bend, avoid the offset.');
+ if(-mn>=25)rc.push('Negative pressure at upper floors: open the stack top fully, avoid AAV only, and add cross-vents every 5–8 floors.');
+ if(P.sewer>5)rc.push('Sewer back pressure is adding to the base pressure. Check surcharge and sewer venting.');
+ if(!rc.length)rc.push('No major issue in this model. Verify with on-site manometer readings.');
+ $('recs').innerHTML=rc.map(x=>'<li>'+x+'</li>').join('');
+ colors();
+}
+function colors(){const cs=getComputedStyle(document.documentElement);['--bg','--card','--tx','--mut','--bd','--ac','--ok','--wa','--er'].forEach(n=>C[n]=cs.getPropertyValue(n).trim()||'#888')}
+matchMedia('(prefers-color-scheme:dark)').addEventListener&&matchMedia('(prefers-color-scheme:dark)').addEventListener('change',colors);
+
+/* ---------- Dynamic state ---------- */
+function initState(){
+ const n=P.N;
+ S={t:0,t0:0,run:true,speed:1,mode:'cycle',act:[],fa:n,flushes:0,
+  y:new Float32Array(n),v:new Float32Array(n),tgt:new Float32Array(n),
+  seal:new Float32Array(n).fill(P.seal),pk:0,pn:0,pmx:new Float32Array(n),pmn:new Float32Array(n),
+  hist:[],air:Array.from({length:18},(_,i)=>i/18),wat:Array.from({length:70},()=>Math.random()),prlp:Array.from({length:8},(_,i)=>i/8)};
+ pickActive();
+}
+function pickActive(){
+ const n=P.N,k=Math.min(P.nAct,n);let a=[];
+ if(P.pattern==='top'){for(let i=0;i<k;i++)a.push(n-i)}
+ else if(P.pattern==='bottom'){for(let i=0;i<k;i++)a.push(1+i)}
+ else if(P.pattern==='spread'){const s=new Set();for(let i=0;i<k;i++)s.add(Math.max(1,Math.min(n,Math.round(1+(i+0.5)*(n-1)/k))));a=[...s]}
+ else{const s=new Set();while(s.size<k)s.add(1+Math.floor(Math.random()*n));a=[...s]}
+ S.act=a;S.fa=Math.max(...a);S.t0=S.t;S.flushes++;
+}
+function env(ph){
+ if(ph<=0)return 0;
+ if(ph<RISE){const s=ph/RISE;return s*s*(3-2*s)}
+ if(S.mode==='hold'||ph<RISE+HOLD)return 1;
+ return Math.exp(-(ph-RISE-HOLD)/TAU);
+}
+const trav=()=>P.N*P.H/R.Vt*TS;
+function ef(f){const d=f<S.fa?(S.fa-f)*P.H/R.Vt*TS:0;return env(S.t-S.t0-d)}
+function step(dt){
+ S.t+=dt;
+ const Tc=RISE+HOLD+4*TAU+trav()+1.5;
+ if(S.mode==='cycle'&&S.t-S.t0>Tc)pickActive();
+ const sub=Math.max(1,Math.ceil(dt/0.02)),h=dt/sub,w0=2*Math.PI*1.3,z=0.22;
+ let mx=-1e9,mn=1e9;
+ for(let i=0;i<P.N;i++){
+  const f=i+1,e=ef(f);
+  const tgt=R.prDyn[i]*Math.pow(e,1.5)+R.sw[i];
+  S.tgt[i]=tgt;
+  let y=S.y[i],v=S.v[i];
+  for(let s=0;s<sub;s++){const a=w0*w0*(tgt-y)-2*z*w0*v;v+=a*h;y+=v*h}
+  y=Math.max(-120,Math.min(120,y));S.y[i]=y;S.v[i]=v;
+  const ay=Math.abs(y);
+  if(ay>25)S.seal[i]=Math.max(0,S.seal[i]-(ay-25)*0.1*dt);
+  if(tgt>S.pmx[i])S.pmx[i]=tgt;if(tgt<S.pmn[i])S.pmn[i]=tgt;
+  if(tgt>mx)mx=tgt;if(tgt<mn)mn=tgt;
+ }
+ if(mx>S.pk)S.pk=mx;if(-mn>S.pn)S.pn=-mn;
+ S.hist.push([mx,mn]);if(S.hist.length>400)S.hist.shift();
+}
+const colv=v=>{v=Math.abs(v);return v<25?C['--ok']:v<40?C['--wa']:C['--er']};
+
+/* ---------- Rendering ---------- */
+function setup(cv,hh){const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=hh||cv.clientHeight;
+ if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr)}
+ const c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,W,H);return{c,W,H}}
+function pipe(c,pts,w,wall,fill,curve){
+ const path=()=>{c.beginPath();c.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++){const p=pts[i];if(p.length===4)c.quadraticCurveTo(p[0],p[1],p[2],p[3]);else c.lineTo(p[0],p[1])}};
+ c.lineJoin='round';c.lineCap='butt';
+ c.strokeStyle=wall;c.lineWidth=w+4;path();c.stroke();
+ c.strokeStyle=fill;c.lineWidth=w;path();c.stroke();
+}
+function drawStack(){
+ const cv=$('cv'),{c,W,H}=setup(cv,470);
+ const N=P.N,T=44,B=H-100,cx=Math.round(W*0.52);
+ const Y=f=>B-(f-1)/Math.max(1,N-1)*(B-T);
+ const sw=11+P.D/14,wall=C['--mut'],fill=C['--card'];
+ const eTop=env(S.t-S.t0);
+ const wc='rgba(60,150,255,.85)';
+
+ // floor lines
+ const step_=Math.max(1,Math.round(9/((B-T)/Math.max(1,N-1))));
+ c.font='10px system-ui';c.textAlign='left';
+ for(let f=1;f<=N;f+=step_){c.strokeStyle=C['--bd'];c.lineWidth=1;c.beginPath();c.moveTo(6,Y(f)+9);c.lineTo(W-6,Y(f)+9);c.globalAlpha=.35;c.stroke();c.globalAlpha=1}
+
+ // sewer geometry
+ const ys=B+48,sx=W-6;
+ // stack + bend pipe
+ let pts=[[cx,T-14],[cx,B]];
+ if(P.bend==='long')pts.push([cx,ys,cx+46,ys]);
+ else if(P.bend==='short'){pts.push([cx,ys])}
+ else{pts.push([cx,B+8],[cx+24,B+26],[cx+24,ys])}
+ pts.push([sx,ys]);
+ pipe(c,pts,sw*2,wall,fill);
+
+ // pressure tint inside stack
+ for(let f=1;f<=N;f++){const p=S.tgt[f-1],a=Math.min(.6,Math.abs(p)/55);if(a<.03)continue;
+  const y1=Y(f)-((B-T)/Math.max(1,N-1))/2,hgt=(B-T)/Math.max(1,N-1);
+  c.fillStyle=p>0?`rgba(214,59,59,${a})`:`rgba(31,111,235,${a})`;c.fillRect(cx-sw,Math.max(T-14,y1),sw*2,hgt+0.6)}
+
+ // water film
+ const th0=4+Math.min(8,R.fill*8);
+ for(let f=1;f<=N;f++){if(f>S.fa)continue;const e=ef(f);if(e<.03)continue;
+  const hgt=(B-T)/Math.max(1,N-1),y1=Y(f)-hgt/2,th=Math.max(1.5,th0*e);
+  c.fillStyle=`rgba(60,150,255,${.25+.55*e})`;
+  c.fillRect(cx-sw,Math.max(T-14,y1),th,hgt+.6);c.fillRect(cx+sw-th,Math.max(T-14,y1),th,hgt+.6)}
+ // falling droplets
+ const vpx=(B-T)/Math.max(.8,trav());
+ S.wat.forEach((s,i)=>{
+  if(S.run)S.wat[i]=(s+lastDt*S.speed*vpx/(B-T)*(0.8+0.4*((i*7)%5)/5))%1;
+  const yy=T+S.wat[i]*(B-T),f=Math.round(N-S.wat[i]*(N-1));
+  if(f>S.fa||f<1)return;const e=ef(f);if(e<.1)return;
+  const x=i%2?cx-sw+2+((i*13)%7)/2:cx+sw-5-((i*13)%7)/2;
+  c.strokeStyle=wc;c.globalAlpha=Math.min(1,e);c.lineWidth=2;c.beginPath();c.moveTo(x,yy);c.lineTo(x,yy+7);c.stroke();c.globalAlpha=1});
+
+ // air chevrons (core)
+ const ge=Math.min(1,eTop*1.1);
+ const vair=30+R.Va*45;
+ S.air.forEach((u,i)=>{
+  if(S.run)S.air[i]=(u+lastDt*S.speed*vair/(B-T))%1;
+  const yy=T-10+S.air[i]*(B-T+10),x=cx+((i%3)-1)*(sw*0.35);
+  c.strokeStyle=C['--tx'];c.globalAlpha=.5*ge;c.lineWidth=1.6;c.beginPath();c.moveTo(x-4,yy-3);c.lineTo(x,yy+2);c.lineTo(x+4,yy-3);c.stroke();c.globalAlpha=1});
+
+ // top vent
+ const ventA={open:1,aav:.55,blocked:.12}[P.vent];
+ c.textAlign='center';c.font='11px system-ui';
+ if(P.vent==='aav'){c.fillStyle=C['--wa'];c.fillRect(cx-sw-6,T-24,sw*2+12,8);c.fillRect(cx-4,T-30,8,6)}
+ if(P.vent==='blocked'){c.fillStyle=C['--er'];c.fillRect(cx-sw-3,T-20,sw*2+6,6)}
+ for(let k=0;k<3;k++){const ph=((S.t*1.2*S.speed+k/3)%1),yy=T-58+ph*28;c.globalAlpha=ventA*(1-ph)*ge;c.fillStyle=C['--ac'];
+  c.beginPath();c.moveTo(cx-6,yy);c.lineTo(cx+6,yy);c.lineTo(cx,yy+8);c.fill();c.globalAlpha=1}
+ c.fillStyle=C['--mut'];c.fillText({open:'Open vent',aav:'AAV',blocked:'Restricted vent'}[P.vent],cx,T-62);
+
+ // PRL
+ const x2=cx+sw+32+P.prlD/20,yTop=Y(Math.max(2,Math.round(N*0.85))),yBot=B-8,lw=2+P.prlD/22;
+ if(P.prl){pipe(c,[[cx+sw,yTop],[x2,yTop],[x2,yBot],[cx+sw,yBot]],lw,wall,fill)}
+ else{c.setLineDash([4,4]);c.strokeStyle=C['--bd'];c.lineWidth=1.5;c.strokeRect(cx+sw+4,yTop,x2-cx-sw-4,yBot-yTop);c.setLineDash([])}
+ if(P.prl){const pb=Math.max(0,S.tgt[0]);const vv=18+pb*4;
+  S.prlp.forEach((u,i)=>{if(S.run)S.prlp[i]=(u+lastDt*S.speed*vv/(yBot-yTop)*(pb>3?1:0.2))%1;
+   const yy=yBot-S.prlp[i]*(yBot-yTop);c.fillStyle=C['--er'];c.globalAlpha=Math.min(1,.2+pb/25);c.beginPath();c.arc(x2,yy,Math.max(1.5,lw*.28),0,7);c.fill();c.globalAlpha=1})}
+ c.fillStyle=C['--mut'];c.font='10px system-ui';c.textAlign='left';c.fillText(P.prl?'PRL '+P.prlD:'No PRL',x2+lw/2+6,(yTop+yBot)/2);
+
+ // sewer water
+ const lvl=sw*2*(0.18+P.sewer/40*0.7);
+ c.fillStyle='rgba(60,150,255,.55)';c.fillRect(cx+60,ys+sw-lvl,sx-cx-60,lvl);
+ c.fillStyle=C['--mut'];c.textAlign='right';c.fillText('Sewer'+(P.sewer>0?' +'+P.sewer+' mm':''),sx-4,ys+sw+14);
+
+ // active floors markers
+ S.act.forEach(f=>{const e=ef(f);if(e<.05)return;c.fillStyle=wc;c.globalAlpha=.4+.6*e;c.beginPath();c.arc(cx-sw-5,Y(f),3+3*e,0,7);c.fill();c.globalAlpha=1});
+
+ // monitored traps
+ const nm=Math.min(N,Math.max(4,Math.floor((B-T)/34)+1));
+ for(let m=0;m<nm;m++){
+  const f=nm===1?1:Math.round(1+m*(N-1)/(nm-1)),i=f-1,yy=Y(f);
+  const x0=cx-sw-86,y=S.y[i],sl=S.seal[i],lost=sl<25;
+  const dy=Math.max(-14,Math.min(14,y*0.45));
+  const ybot=yy+14,sealPx=Math.max(0,sl*0.26),lb=ybot-sealPx;
+  const lr=lb-dy,ls=lb+dy; // room leg, stack leg levels
+  const stc=lost?C['--er']:colv(y);
+  // branch pipe to stack
+  c.strokeStyle=C['--bd'];c.lineWidth=3;c.beginPath();c.moveTo(x0+24,yy-6);c.lineTo(cx-sw-1,yy-6);c.stroke();
+  // water
+  c.fillStyle='rgba(60,150,255,.8)';
+  c.fillRect(x0,Math.min(ybot,Math.max(yy-10,lr)),6,Math.max(0,ybot-Math.max(yy-10,lr)));
+  c.fillRect(x0+18,Math.min(ybot,Math.max(yy-10,ls)),6,Math.max(0,ybot-Math.max(yy-10,ls)));
+  c.fillRect(x0,ybot-3,24,3);
+  // trap outline (U)
+  c.strokeStyle=stc;c.lineWidth=2;c.beginPath();c.moveTo(x0,yy-10);c.lineTo(x0,ybot);c.lineTo(x0+24,ybot);c.lineTo(x0+24,yy-10);c.moveTo(x0+6,yy-10);c.lineTo(x0+6,ybot-4);c.lineTo(x0+18,ybot-4);c.lineTo(x0+18,yy-10);c.stroke();
+  // splash on WC jump
+  if(y>35){c.fillStyle='rgba(60,150,255,.9)';for(let k=0;k<3;k++){c.beginPath();c.arc(x0+3+Math.random()*3,yy-12-Math.random()*8,1.6,0,7);c.fill()}}
+  c.font='10px system-ui';c.textAlign='right';c.fillStyle=stc;
+  c.fillText('F'+f+'  '+(y>=0?'+':'')+y.toFixed(0),x0-5,yy+1);
+  c.fillStyle=lost?C['--er']:C['--mut'];c.fillText('seal '+sl.toFixed(0),x0-5,yy+12);
+ }
+ // title info
+ c.textAlign='left';c.fillStyle=C['--mut'];c.font='11px system-ui';
+ c.fillText('t = '+S.t.toFixed(1)+' s  ·  flush #'+S.flushes+'  ·  '+S.act.length+' floor(s) active',8,14);
+ c.fillText('Film '+R.Vt.toFixed(1)+' m/s · air '+R.Va.toFixed(1)+' m/s',8,28);
+}
+function chartLimits(){const m=Math.max(40,Math.ceil(Math.max(...R.pr.map(Math.abs),...A.pr.map(Math.abs),S.pk,S.pn)/10)*10);return m}
+function drawProfile(){
+ const {c,W,H}=setup($('cp'),230);
+ const N=P.N,lim=chartLimits(),L=38,Rr=W-10,T=10,B=H-28;
+ const X=v=>L+(v+lim)/(2*lim)*(Rr-L),Y=f=>B-(f-1)/Math.max(1,N-1)*(B-T);
+ c.font='11px system-ui';
+ c.fillStyle=C['--er'];c.globalAlpha=.08;c.fillRect(X(25),T,Rr-X(25),B-T);c.fillRect(L,T,X(-25)-L,B-T);c.globalAlpha=1;
+ c.strokeStyle=C['--bd'];c.fillStyle=C['--mut'];c.textAlign='center';c.lineWidth=1;
+ for(let v=-lim;v<=lim;v+=lim/2){c.beginPath();c.moveTo(X(v),T);c.lineTo(X(v),B);c.stroke();c.fillText(Math.round(v),X(v),H-12)}
+ c.strokeStyle=C['--tx'];c.beginPath();c.moveTo(X(0),T);c.lineTo(X(0),B);c.stroke();
+ c.textAlign='right';[1,Math.round(N/2),N].forEach(f=>c.fillText('F'+f,L-4,Y(f)+4));
+ c.textAlign='center';c.fillText('Pressure (mm water gauge)',(L+Rr)/2,H-1);
+ const line=(arr,col,dash,w)=>{c.strokeStyle=col;c.lineWidth=w;c.setLineDash(dash);c.beginPath();for(let i=0;i<N;i++){const x=X(arr[i]),y=Y(i+1);i?c.lineTo(x,y):c.moveTo(x,y)}c.stroke();c.setLineDash([])};
+ line(A.pr,C['--wa'],[2,4],1.6);line(R.pr,C['--mut'],[5,4],1.8);
+ // peaks recorded
+ line(S.pmx,C['--er'],[],1);line(S.pmn,C['--er'],[],1);
+ line(S.tgt,C['--ac'],[],2.6);
+}
+function drawScope(){
+ const {c,W,H}=setup($('cs'),150);
+ const lim=chartLimits(),L=34,Rr=W-8,T=8,B=H-18;
+ const Y=v=>B-(v+lim)/(2*lim)*(B-T);
+ c.font='11px system-ui';c.fillStyle=C['--mut'];c.textAlign='right';
+ [-lim,0,lim].forEach(v=>{c.strokeStyle=C['--bd'];c.beginPath();c.moveTo(L,Y(v));c.lineTo(Rr,Y(v));c.stroke();c.fillText(Math.round(v),L-4,Y(v)+4)});
+ c.setLineDash([4,4]);c.strokeStyle=C['--er'];c.globalAlpha=.6;[25,-25].forEach(v=>{c.beginPath();c.moveTo(L,Y(v));c.lineTo(Rr,Y(v));c.stroke()});c.setLineDash([]);c.globalAlpha=1;
+ const n=S.hist.length;if(n<2)return;
+ const X=i=>L+i/399*(Rr-L);
+ [[0,C['--er']],[1,C['--ac']]].forEach(([k,col])=>{c.strokeStyle=col;c.lineWidth=2;c.beginPath();S.hist.forEach((h,i)=>{const x=X(i+400-n),y=Y(h[k]);i?c.lineTo(x,y):c.moveTo(x,y)});c.stroke()});
+ c.textAlign='center';c.fillStyle=C['--mut'];c.fillText('← time',(L+Rr)/2,H-3);
+}
+function updateDOM(){
+ const N=P.N;let mx=-1e9,mn=1e9,lost=0;
+ for(let i=0;i<N;i++){const v=S.tgt[i];if(v>mx)mx=v;if(v<mn)mn=v;if(S.seal[i]<25)lost++}
+ $('kpi').innerHTML=
+  `<div><span>Now max +</span><strong>${mx.toFixed(0)} mm</strong></div><div><span>Now max −</span><strong>${mn.toFixed(0)} mm</strong></div><div><span>Seals lost</span><strong style="color:${lost?'var(--er)':'inherit'}">${lost} / ${N}</strong></div>`+
+  `<div><span>Peak + (recorded)</span><strong>${S.pk.toFixed(0)} mm</strong></div><div><span>Peak − (recorded)</span><strong>${(-S.pn).toFixed(0)} mm</strong></div><div><span>Stack load</span><strong>${(R.fill*100).toFixed(0)}%</strong></div>`;
+ const fl=$('floors');let h='';
+ for(let f=N;f>=1;f--){const v=S.tgt[f-1],lost=S.seal[f-1]<25;h+=`<div style="background:${lost?'var(--er)':colv(v)}${lost?';outline:2px solid var(--tx)':''}">${f}: ${v.toFixed(0)}</div>`}
+ fl.innerHTML=h;
+}
+let lastDt=0.016;
+function frame(ts){
+ const now=ts/1000;let dt=Math.min(0.05,now-last||0.016);last=now;lastDt=dt;
+ if(S.run)step(dt*S.speed);
+ drawStack();drawProfile();drawScope();
+ if(fcount++%5===0)updateDOM();
+ requestAnimationFrame(frame);
+}
+colors();initState();recalc();syncUI();
+window.addEventListener('resize',()=>{});
+requestAnimationFrame(frame);
+</script></body></html>

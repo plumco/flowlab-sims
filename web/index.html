@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Huliot FlowLab: Real-time interactive engineering simulation portal for building drainage stacks, water supply, acoustic attenuation, and siphonic systems.">
+  <meta name="theme-color" content="#0B0F17">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Huliot FlowLab">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Huliot FlowLab — Engineering Simulation Platform</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body {
+      margin: 0;
+      background-color: #0B0F17;
+      color: #E6EDF5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+    }
+    #loading-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #0B0F17;
+      z-index: 99999;
+      transition: opacity 0.4s ease;
+    }
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 3.5px solid rgba(0, 102, 255, 0.2);
+      border-top-color: #00D2FF;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading-title {
+      margin-top: 18px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #E6EDF5;
+    }
+    .loading-sub {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #8B9CB3;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading-container">
+    <div class="spinner"></div>
+    <div class="loading-title">HULIOT FLOWLAB</div>
+    <div class="loading-sub">Loading Engineering Simulators...</div>
+  </div>
+
+  <script>
+    window.__HULIOT_PARAMS__ = null;
+    window.__huliotDispatchParams = function(data) {
+      window.__HULIOT_PARAMS__ = data;
+      var str = typeof data === 'string' ? data : JSON.stringify(data);
+      var iframes = document.querySelectorAll('iframe');
+      for (var i = 0; i < iframes.length; i++) {
+        try {
+          if (iframes[i].contentWindow) {
+            iframes[i].contentWindow.postMessage(str, '*');
+          }
+        } catch(e) {}
+      }
+    };
+    window.addEventListener('flutter-first-frame', function () {
+      var loader = document.getElementById('loading-container');
+      if (loader) {
+        loader.style.opacity = '0';
+        setTimeout(function () {
+          loader.remove();
+        }, 400);
+      }
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
