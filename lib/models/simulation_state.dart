@@ -85,6 +85,36 @@ enum StandardVerdict {
 
 enum FlowLabReportType {
   standardCompliance, // EN 12056 standard test on user-selected floors
-  overloadStress,     // Full building simultaneous all-bathroom overload test
+  scenarioLab,        // Scenario Lab: Simultaneous shock (0s) vs Staggered time-gap (15s) diversity study
   morningRushAudit,   // 1-Hour dynamic behavioral Monte Carlo rush audit
+}
+
+class ScenarioCaseMetrics {
+  final String label; // e.g. "Case A: 0s Simultaneous Shock" or "Case B: 15s Staggered Diversity"
+  final int selectedFloors;
+  final double timeGapSeconds;
+  final double peakInstantFlowLs;
+  final double peakNegativePressurePa;
+  final double peakPositivePressurePa;
+  final double residualTrapSealMm;
+  final double stackCapacityLs;
+  final double capacityUtilizationPercent;
+  final String flowRegime; // 'Choked Piston Slug' or 'Smooth Annular Core'
+  final bool isPass;
+  final String failureReason;
+
+  ScenarioCaseMetrics({
+    required this.label,
+    required this.selectedFloors,
+    required this.timeGapSeconds,
+    required this.peakInstantFlowLs,
+    required this.peakNegativePressurePa,
+    required this.peakPositivePressurePa,
+    required this.residualTrapSealMm,
+    required this.stackCapacityLs,
+    required this.capacityUtilizationPercent,
+    required this.flowRegime,
+    required this.isPass,
+    required this.failureReason,
+  });
 }

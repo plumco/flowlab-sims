@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/simulation_params.dart';
 import '../../models/simulation_state.dart';
+import '../../physics/drainage_physics_engine.dart';
 import '../../providers/simulator_provider.dart';
 
 class ParametersPanel extends StatelessWidget {
@@ -326,8 +327,8 @@ class ParametersPanel extends StatelessWidget {
     Color modeBorderColor;
     if (prov.isMonteCarloMode) {
       modeBorderColor = const Color(0xFFF59E0B);
-    } else if (prov.activeReportType == FlowLabReportType.overloadStress) {
-      modeBorderColor = const Color(0xFFEA580C);
+    } else if (prov.activeReportType == FlowLabReportType.scenarioLab) {
+      modeBorderColor = const Color(0xFF2563EB);
     } else {
       modeBorderColor = AppColors.accent.withValues(alpha: 0.4);
     }
@@ -351,11 +352,11 @@ class ParametersPanel extends StatelessWidget {
                 Icon(
                   prov.isMonteCarloMode
                       ? Icons.casino_rounded
-                      : (prov.activeReportType == FlowLabReportType.overloadStress ? Icons.warning_rounded : Icons.verified_rounded),
+                      : (prov.activeReportType == FlowLabReportType.scenarioLab ? Icons.science_rounded : Icons.verified_rounded),
                   size: 18,
                   color: prov.isMonteCarloMode
                       ? const Color(0xFFF59E0B)
-                      : (prov.activeReportType == FlowLabReportType.overloadStress ? const Color(0xFFEA580C) : AppColors.accent),
+                      : (prov.activeReportType == FlowLabReportType.scenarioLab ? const Color(0xFF2563EB) : AppColors.accent),
                 ),
                 const SizedBox(width: 8),
                 const Text(
@@ -368,27 +369,27 @@ class ParametersPanel extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: (prov.isMonteCarloMode
                             ? const Color(0xFFF59E0B)
-                            : (prov.activeReportType == FlowLabReportType.overloadStress ? const Color(0xFFEA580C) : AppColors.accent))
+                            : (prov.activeReportType == FlowLabReportType.scenarioLab ? const Color(0xFF2563EB) : AppColors.accent))
                         .withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     prov.isMonteCarloMode
                         ? 'Monte Carlo'
-                        : (prov.activeReportType == FlowLabReportType.overloadStress ? '100% Overload' : 'EN 12056 Std'),
+                        : (prov.activeReportType == FlowLabReportType.scenarioLab ? 'Scenario Lab' : 'EN 12056 Std'),
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: prov.isMonteCarloMode
                           ? const Color(0xFFF59E0B)
-                          : (prov.activeReportType == FlowLabReportType.overloadStress ? const Color(0xFFEA580C) : AppColors.accent),
+                          : (prov.activeReportType == FlowLabReportType.scenarioLab ? const Color(0xFF2563EB) : AppColors.accent),
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            // 3-Mode Selector Tabs: Standard vs Overload vs Morning Rush
+            // 3-Mode Selector Tabs: Standard vs Scenario Lab vs Morning Rush
             Row(
               children: [
                 // 1. Standard Test
@@ -437,25 +438,25 @@ class ParametersPanel extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 6),
-                // 2. Full Overload Test
+                // 2. Scenario Lab (Custom Diversity Study: 0s vs 15s)
                 Expanded(
                   child: InkWell(
                     onTap: prov.isTestRunning || prov.isMonteCarloRunning
                         ? null
-                        : () => prov.setTestingMode(FlowLabReportType.overloadStress),
+                        : () => prov.setTestingMode(FlowLabReportType.scenarioLab),
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                       decoration: BoxDecoration(
-                        color: currentMode == FlowLabReportType.overloadStress
-                            ? (isDarkMode ? const Color(0xFFEA580C).withValues(alpha: 0.25) : const Color(0xFFEA580C).withValues(alpha: 0.15))
+                        color: currentMode == FlowLabReportType.scenarioLab
+                            ? (isDarkMode ? const Color(0xFF2563EB).withValues(alpha: 0.25) : const Color(0xFF2563EB).withValues(alpha: 0.15))
                             : (isDarkMode ? AppColors.darkCard : AppColors.lightCard),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: currentMode == FlowLabReportType.overloadStress
-                              ? const Color(0xFFEA580C)
+                          color: currentMode == FlowLabReportType.scenarioLab
+                              ? const Color(0xFF2563EB)
                               : (isDarkMode ? AppColors.darkBorder : AppColors.lightBorder),
-                          width: currentMode == FlowLabReportType.overloadStress ? 1.5 : 1.0,
+                          width: currentMode == FlowLabReportType.scenarioLab ? 1.5 : 1.0,
                         ),
                       ),
                       child: Column(
@@ -463,16 +464,17 @@ class ParametersPanel extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              const Text('⚡ ', style: TextStyle(fontSize: 11)),
-                              Text('Overload',
+                              const Icon(Icons.science_rounded, size: 13, color: Color(0xFF2563EB)),
+                              const SizedBox(width: 4),
+                              Text('Scenario Lab',
                                   style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 11,
-                                      color: currentMode == FlowLabReportType.overloadStress ? const Color(0xFFEA580C) : null)),
+                                      color: currentMode == FlowLabReportType.scenarioLab ? const Color(0xFF2563EB) : null)),
                             ],
                           ),
                           const SizedBox(height: 2),
-                          Text('100% Full Load',
+                          Text('0s vs 15s Gap',
                               style: TextStyle(fontSize: 9, color: isDarkMode ? AppColors.darkTextMuted : AppColors.lightTextMuted)),
                         ],
                       ),
@@ -548,8 +550,8 @@ class ParametersPanel extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            prov.activeReportType == FlowLabReportType.overloadStress
-                                ? 'OVERLOAD STRESS TEST IN PROGRESS'
+                            prov.activeReportType == FlowLabReportType.scenarioLab
+                                ? 'SCENARIO LAB STUDY IN PROGRESS'
                                 : 'EN 12056 COMPLIANCE TEST IN PROGRESS',
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: AppColors.accent),
                           ),
@@ -615,8 +617,8 @@ class ParametersPanel extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                prov.activeReportType == FlowLabReportType.overloadStress
-                                    ? 'Overload Stress Test Completed (${prov.params.floors} Floors)'
+                                prov.activeReportType == FlowLabReportType.scenarioLab
+                                    ? 'Scenario Diversity Study Completed (${prov.scenarioTargetFloors} Floors)'
                                     : 'Compliance Test Completed (${prov.params.floors} Floors)',
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.success),
                               ),
@@ -642,8 +644,8 @@ class ParametersPanel extends StatelessWidget {
                             ),
                             icon: const Icon(Icons.picture_as_pdf_rounded, size: 15),
                             label: Text(
-                              prov.activeReportType == FlowLabReportType.overloadStress
-                                  ? 'Download Overload Report 📄'
+                              prov.activeReportType == FlowLabReportType.scenarioLab
+                                  ? 'Download Scenario Report 📄'
                                   : 'Download Official PDF 📄',
                               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                             ),
@@ -738,14 +740,14 @@ class ParametersPanel extends StatelessWidget {
                   ],
                 ),
               ),
-            ] else if (prov.activeReportType == FlowLabReportType.overloadStress) ...[
-              // Full Overload Test Execution Card
+            ] else if (prov.activeReportType == FlowLabReportType.scenarioLab) ...[
+              // Scenario Lab Execution Card: 0s Simultaneous Shock vs 15s Staggered Diversity
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isDarkMode ? const Color(0xFF1E130D) : const Color(0xFFFFF7ED),
+                  color: isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFEA580C).withValues(alpha: 0.4)),
+                  border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.5)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -755,39 +757,231 @@ class ParametersPanel extends StatelessWidget {
                       children: [
                         const Row(
                           children: [
-                            Icon(Icons.warning_amber_rounded, size: 15, color: Color(0xFFEA580C)),
-                            SizedBox(width: 5),
+                            Icon(Icons.science_rounded, size: 16, color: Color(0xFF2563EB)),
+                            SizedBox(width: 6),
                             Text(
-                              '100% Full Building Simultaneous Load',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFFEA580C)),
+                              'Scenario Lab: Custom Diversity Study',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF2563EB)),
                             ),
                           ],
                         ),
-                        Text(
-                          '${prov.params.floors} / ${prov.params.floors} Floors',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFEA580C)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '${prov.scenarioTargetFloors} Floors Target',
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'All fixtures across every floor discharging simultaneously at full capacity (${(prov.params.floors * 2.9).toStringAsFixed(1)} L/s) to stress test stack & PRL.',
-                      style: TextStyle(fontSize: 10, color: isDarkMode ? AppColors.darkTextMuted : AppColors.lightTextMuted),
+                    const SizedBox(height: 8),
+
+                    // Floor Selector Row with Quick 11F Preset
+                    Row(
+                      children: [
+                        Text(
+                          'Test Floors: ',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white70 : Colors.black87),
+                        ),
+                        Expanded(
+                          child: SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              trackHeight: 3,
+                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                            ),
+                            child: Slider(
+                              value: prov.scenarioTargetFloors.toDouble(),
+                              min: 1,
+                              max: prov.params.floors.toDouble(),
+                              divisions: max(1, prov.params.floors - 1),
+                              activeColor: const Color(0xFF2563EB),
+                              onChanged: prov.isTestRunning
+                                  ? null
+                                  : (val) => prov.setScenarioTargetFloors(val.round()),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: 32,
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${prov.scenarioTargetFloors}F',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF2563EB)),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        // Quick 11 Floors Button (User's benchmark)
+                        InkWell(
+                          onTap: prov.isTestRunning
+                              ? null
+                              : () => prov.setScenarioTargetFloors(min(11, prov.params.floors)),
+                          borderRadius: BorderRadius.circular(4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: prov.scenarioTargetFloors == 11
+                                  ? const Color(0xFF2563EB)
+                                  : (isDarkMode ? Colors.white12 : Colors.black12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '11F Std',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: prov.scenarioTargetFloors == 11 ? Colors.white : null,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Strategy Selector: 0s Shock vs 15s Staggered vs Dual
+                    Row(
+                      children: [
+                        // Case A: 0s Shock
+                        Expanded(
+                          child: InkWell(
+                            onTap: prov.isTestRunning ? null : () => prov.setScenarioExecutionType('simultaneous'),
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+                              decoration: BoxDecoration(
+                                color: prov.scenarioExecutionType == 'simultaneous'
+                                    ? (isDarkMode ? const Color(0xFFEF4444).withValues(alpha: 0.25) : const Color(0xFFEF4444).withValues(alpha: 0.15))
+                                    : (isDarkMode ? AppColors.darkCard : AppColors.lightCard),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: prov.scenarioExecutionType == 'simultaneous'
+                                      ? const Color(0xFFEF4444)
+                                      : (isDarkMode ? AppColors.darkBorder : AppColors.lightBorder),
+                                  width: prov.scenarioExecutionType == 'simultaneous' ? 1.5 : 1.0,
+                                ),
+                              ),
+                              child: const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('🔴 0s Shock', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFFEF4444))),
+                                  Text('All at Once (Fail)', style: TextStyle(fontSize: 8.5, color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // Case B: 15s Staggered
+                        Expanded(
+                          child: InkWell(
+                            onTap: prov.isTestRunning ? null : () => prov.setScenarioExecutionType('staggered'),
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+                              decoration: BoxDecoration(
+                                color: prov.scenarioExecutionType == 'staggered'
+                                    ? (isDarkMode ? const Color(0xFF10B981).withValues(alpha: 0.25) : const Color(0xFF10B981).withValues(alpha: 0.15))
+                                    : (isDarkMode ? AppColors.darkCard : AppColors.lightCard),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: prov.scenarioExecutionType == 'staggered'
+                                      ? const Color(0xFF10B981)
+                                      : (isDarkMode ? AppColors.darkBorder : AppColors.lightBorder),
+                                  width: prov.scenarioExecutionType == 'staggered' ? 1.5 : 1.0,
+                                ),
+                              ),
+                              child: const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('🟢 15s Gap', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF10B981))),
+                                  Text('Staggered (Pass)', style: TextStyle(fontSize: 8.5, color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // Case C: Dual Comparative
+                        Expanded(
+                          child: InkWell(
+                            onTap: prov.isTestRunning ? null : () => prov.setScenarioExecutionType('dual'),
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+                              decoration: BoxDecoration(
+                                color: prov.scenarioExecutionType == 'dual'
+                                    ? (isDarkMode ? const Color(0xFF6366F1).withValues(alpha: 0.25) : const Color(0xFF6366F1).withValues(alpha: 0.15))
+                                    : (isDarkMode ? AppColors.darkCard : AppColors.lightCard),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: prov.scenarioExecutionType == 'dual'
+                                      ? const Color(0xFF6366F1)
+                                      : (isDarkMode ? AppColors.darkBorder : AppColors.lightBorder),
+                                  width: prov.scenarioExecutionType == 'dual' ? 1.5 : 1.0,
+                                ),
+                              ),
+                              child: const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('⚖️ Dual Study', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF6366F1))),
+                                  Text('Side-by-Side', style: TextStyle(fontSize: 8.5, color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
+
+                    // Dynamic Description explaining physics
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: isDarkMode ? Colors.black26 : Colors.white60,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        prov.scenarioExecutionType == 'simultaneous'
+                            ? '🔴 0s Shock: All ${prov.scenarioTargetFloors} floors flush simultaneously (${(prov.scenarioTargetFloors * 2.0).toStringAsFixed(1)} L/s). Exceeds Table 12 limit (${DrainagePhysicsEngine.getMaxCapacity(prov.params.stackDiameter, prov.params.teeType).toStringAsFixed(1)} L/s), causing pipe choke & trap blowouts.'
+                            : (prov.scenarioExecutionType == 'staggered'
+                                ? '🟢 15s Gap: Each floor flushes with 15s interval. Instant load stays at 2.0 L/s, preserving continuous central air core and 100% trap water seal.'
+                                : '⚖️ Dual Study: Computes both 0s Shock and 15s Staggered regimes side-by-side to generate an undeniable engineering proof report for clients.'),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: prov.scenarioExecutionType == 'simultaneous'
+                              ? const Color(0xFFEF4444)
+                              : (prov.scenarioExecutionType == 'staggered' ? const Color(0xFF10B981) : const Color(0xFF6366F1)),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Run Test Button
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFC2410C),
+                          backgroundColor: prov.scenarioExecutionType == 'simultaneous'
+                              ? const Color(0xFFDC2626)
+                              : (prov.scenarioExecutionType == 'staggered' ? const Color(0xFF059669) : const Color(0xFF4F46E5)),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 9),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                         ),
-                        onPressed: () => prov.triggerFlushAll(),
-                        icon: const Icon(Icons.bolt_rounded, size: 17),
+                        onPressed: () => prov.runScenarioStudy(),
+                        icon: const Icon(Icons.science_rounded, size: 16),
                         label: Text(
-                          '⚡ Run Full Overload Stress Test (${prov.params.floors} Floors)',
+                          prov.scenarioExecutionType == 'dual'
+                              ? 'Run Dual Comparative Study (${prov.scenarioTargetFloors}F)'
+                              : (prov.scenarioExecutionType == 'staggered'
+                                  ? 'Run 15s Staggered Study (${prov.scenarioTargetFloors}F)'
+                                  : 'Run 0s Shock Study (${prov.scenarioTargetFloors}F)'),
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                         ),
                       ),

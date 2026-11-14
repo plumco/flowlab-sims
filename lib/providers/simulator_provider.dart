@@ -52,6 +52,13 @@ class SimulatorProvider extends ChangeNotifier {
   final List<FixtureEventLog> _chronologicalEventLogs = [];
   DateTime? _lastEventRealTime;
 
+  // Scenario Lab State (Custom Floors, Simultaneous Shock vs Staggered Diversity)
+  int _scenarioTargetFloors = 11;
+  double _scenarioTimeGapSeconds = 0.0; // 0s = Simultaneous, 15s = Staggered
+  String _scenarioExecutionType = 'simultaneous'; // 'simultaneous', 'staggered', 'dual'
+  ScenarioCaseMetrics? _scenarioCaseAResult;
+  ScenarioCaseMetrics? _scenarioCaseBResult;
+
   // Static screening results for all 3 systems + no-PRL comparison
   late StaticPhysicsResult _resultSys1;
   late StaticPhysicsResult _resultSys2;
@@ -161,6 +168,13 @@ class SimulatorProvider extends ChangeNotifier {
   bool get isMonteCarloRunning => _isMonteCarloRunning;
   bool get isMonteCarloCompleted => _isMonteCarloCompleted;
   double get monteCarloProgress => (_monteCarloElapsed / _monteCarloDuration).clamp(0.0, 1.0);
+
+  // Scenario Lab Getters
+  int get scenarioTargetFloors => min(_scenarioTargetFloors, _params.floors);
+  double get scenarioTimeGapSeconds => _scenarioTimeGapSeconds;
+  String get scenarioExecutionType => _scenarioExecutionType;
+  ScenarioCaseMetrics? get scenarioCaseAResult => _scenarioCaseAResult;
+  ScenarioCaseMetrics? get scenarioCaseBResult => _scenarioCaseBResult;
   int get peakConcurrentFlushes => _peakConcurrentFlushes;
   int get totalFlushesTriggered => _totalFlushesTriggered;
   List<double> get concurrencyHistory => _concurrencyHistory;
@@ -611,7 +625,7 @@ class SimulatorProvider extends ChangeNotifier {
         newParams.ventType != _params.ventType;
 
     SimulationParams effective = newParams;
-    if (floorsChanged && _activeReportType != FlowLabReportType.overloadStress) {
+    if (floorsChanged && _activeReportType == FlowLabReportType.standardCompliance) {
       final double qww = effective.kFactor * sqrt(effective.floors * 3.1);
       final int enActive = max(1, min(effective.floors, (qww / 1.0).round()));
       effective = effective.copyWith(nActive: enActive, flowPerFloor: 1.0, dischargePattern: 'mix');
@@ -710,7 +724,7 @@ class SimulatorProvider extends ChangeNotifier {
     // ALL fixtures in each bathroom (WC 2.0 DU + Washbasin 0.5 DU + Floor Trap 0.6 DU = 3.1 DU, flow = 2.9 L/s)
     // are flushed simultaneously across all floors to stress-test the stack against its maximum capacity limit!
     const double fullEquipmentFlowPerBathroom = 2.9; // L/s
-    _activeReportType = FlowLabReportType.overloadStress;
+    _activeReportType = FlowLabReportType.scenarioLab;
     _params = _params.copyWith(nActive: n, dischargePattern: 'all', flowPerFloor: fullEquipmentFlowPerBathroom);
     _activeFloors = List.generate(n, (i) => i + 1);
     _firstActiveFloor = n;
@@ -896,6 +910,188 @@ class SimulatorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setScenarioTargetFloors(int count) {
+    if (isTestRunning || isMonteCarloRunning) return;
+    _scenarioTargetFloors = count.clamp(1, _params.floors);
+    if (_activeReportType == FlowLabReportType.scenarioLab) {
+      _applyScenarioConfiguration();
+    }
+    notifyListeners();
+  }
+
+  void setScenarioTimeGap(double gap) {
+    if (isTestRunning || isMonteCarloRunning) return;
+    _scenarioTimeGapSeconds = gap;
+    if (_activeReportType == FlowLabReportType.scenarioLab) {
+      _applyScenarioConfiguration();
+    }
+    notifyListeners();
+  }
+
+  void setScenarioExecutionType(String type) {
+    if (isTestRunning || isMonteCarloRunning) return;
+    _scenarioExecutionType = type;
+    if (type == 'simultaneous') {
+      _scenarioTimeGapSeconds = 0.0;
+    } else if (type == 'staggered') {
+      _scenarioTimeGapSeconds = 15.0;
+    }
+    if (_activeReportType == FlowLabReportType.scenarioLab) {
+      _applyScenarioConfiguration();
+    }
+    notifyListeners();
+  }
+
+  ScenarioCaseMetrics calculateScenarioMetrics({required int targetFloors, required double gapSeconds}) {
+    final double qCap = DrainagePhysicsEngine.getMaxCapacity(_params.stackDiameter, _params.teeType);
+    final bool isSimultaneous = gapSeconds <= 2.0;
+
+    if (isSimultaneous) {
+      // All target floors discharging simultaneously (e.g. 11 floors * 2.0 L/s = 22.0 L/s)
+      final double instantFlow = targetFloors * 2.0;
+      final double utilization = (instantFlow / qCap) * 100.0;
+      final bool isPass = instantFlow <= qCap;
+      final double overRatio = (instantFlow / qCap).clamp(1.0, 5.0);
+      final double negPa = isPass ? -120.0 : -(180.0 + overRatio * 110.0).clamp(200.0, 750.0);
+      final double posPa = isPass ? 45.0 : (60.0 + overRatio * 50.0).clamp(70.0, 350.0);
+      final double residualSeal = isPass
+          ? max(45.0, _params.trapSealDepth - 10.0)
+          : max(0.0, _params.trapSealDepth - (overRatio * 22.0)).clamp(0.0, _params.trapSealDepth.toDouble());
+      final String regime = isPass
+          ? 'Smooth Annular Film'
+          : 'Choked Piston Slug (Full Bore Hydraulic Air Blockage)';
+      final String reason = isPass
+          ? 'Instant discharge flow ($instantFlow L/s) is within EN 12056 Table 12 certified capacity ($qCap L/s).'
+          : 'Catastrophic Overload: $targetFloors floors flushing simultaneously generates $instantFlow L/s, exceeding certified stack capacity of $qCap L/s. Complete air core collapse pulls negative pressure beyond trap water seal retention limit.';
+
+      return ScenarioCaseMetrics(
+        label: 'Case A: $targetFloors Floors Simultaneous Shock (Δt = 0s)',
+        selectedFloors: targetFloors,
+        timeGapSeconds: 0.0,
+        peakInstantFlowLs: instantFlow,
+        peakNegativePressurePa: negPa,
+        peakPositivePressurePa: posPa,
+        residualTrapSealMm: residualSeal,
+        stackCapacityLs: qCap,
+        capacityUtilizationPercent: utilization,
+        flowRegime: regime,
+        isPass: isPass,
+        failureReason: reason,
+      );
+    } else {
+      // Staggered sequential flush with time gap (e.g. 15s gap)
+      // Since individual WC flush duration is ~5 seconds, with a 15s interval only 1 floor is flowing at any instant!
+      const double singleFixtureFlow = 2.0;
+      final double instantFlow = singleFixtureFlow;
+      final double utilization = (instantFlow / qCap) * 100.0;
+      const bool isPass = true;
+      const double negPa = -125.0; // Comfortably below -250 Pa (25mm WG) limit
+      const double posPa = 55.0;
+      final double residualSeal = max(45.0, _params.trapSealDepth - 6.0);
+      const String regime = 'Continuous Annular Film with Unrestricted Central Air Core';
+      final String reason = 'Staggered discharge (Δt = ${gapSeconds.toInt()}s) enables water slugs from preceding floors to clear the stack before subsequent discharges. The central air core remains fully open at all times.';
+
+      return ScenarioCaseMetrics(
+        label: 'Case B: $targetFloors Floors Staggered Diversity (Δt = ${gapSeconds.toInt()}s)',
+        selectedFloors: targetFloors,
+        timeGapSeconds: gapSeconds,
+        peakInstantFlowLs: instantFlow,
+        peakNegativePressurePa: negPa,
+        peakPositivePressurePa: posPa,
+        residualTrapSealMm: residualSeal,
+        stackCapacityLs: qCap,
+        capacityUtilizationPercent: utilization,
+        flowRegime: regime,
+        isPass: isPass,
+        failureReason: reason,
+      );
+    }
+  }
+
+  static List<int> computeDistributedFloors(int totalFloors, int count) {
+    final int k = count.clamp(1, totalFloors);
+    if (k >= totalFloors) {
+      return List.generate(totalFloors, (i) => totalFloors - i);
+    }
+    final double step = (totalFloors - 1) / (k - 1 > 0 ? k - 1 : 1);
+    final Set<int> picked = {};
+    for (int i = 0; i < k; i++) {
+      int f = (totalFloors - (i * step).round()).clamp(1, totalFloors);
+      while (picked.contains(f) && f > 1) {
+        f--;
+      }
+      while (picked.contains(f) && f < totalFloors) {
+        f++;
+      }
+      picked.add(f);
+    }
+    final res = picked.toList()..sort((a, b) => b.compareTo(a));
+    return res;
+  }
+
+  void _applyScenarioConfiguration() {
+    final int k = min(_scenarioTargetFloors, _params.floors);
+    final List<int> picked = computeDistributedFloors(_params.floors, k);
+    _activeFloors = picked;
+    _firstActiveFloor = picked.isNotEmpty ? picked.first : _params.floors;
+
+    final bool isSimultaneous = _scenarioTimeGapSeconds <= 2.0;
+    final double flowPerF = isSimultaneous ? 2.0 : 2.0;
+    final int nAct = isSimultaneous ? k : 1;
+
+    _params = _params.copyWith(
+      nActive: nAct,
+      flowPerFloor: flowPerF,
+      dischargePattern: isSimultaneous ? 'all' : 'top',
+    );
+
+    _floorOccupancyStates.forEach((_, s) => s.reset());
+    final now = DateTime.now();
+    for (final f in _activeFloors) {
+      _floorOccupancyStates[f]?.triggerFixture(FixtureType.wc, now);
+    }
+    _logDischargeEventsForActive();
+    _recalculateStatic();
+    _syncWithCadView();
+  }
+
+  void runScenarioStudy({String? overrideType}) {
+    final typeToRun = overrideType ?? _scenarioExecutionType;
+    _activeReportType = FlowLabReportType.scenarioLab;
+    _isMonteCarloMode = false;
+    _isMonteCarloRunning = false;
+
+    // Precalculate both Case A and Case B for comparative study reporting
+    _scenarioCaseAResult = calculateScenarioMetrics(targetFloors: scenarioTargetFloors, gapSeconds: 0.0);
+    _scenarioCaseBResult = calculateScenarioMetrics(targetFloors: scenarioTargetFloors, gapSeconds: 15.0);
+
+    _applyScenarioConfiguration();
+
+    _testDuration = 8.0;
+    _testElapsed = 0.0;
+    _testProgress = 0.0;
+    _testStatus = TestRunStatus.running;
+    _testPhaseText = typeToRun == 'staggered'
+        ? 'Scenario Lab: 15s Staggered Diversity Study Running'
+        : (typeToRun == 'dual'
+            ? 'Scenario Lab: Dual Comparative Shock vs Diversity Study Running'
+            : 'Scenario Lab: 0s Simultaneous Shock Study Running');
+    _isPlaying = true;
+    _flushStartTime = _simTime;
+    _flushCount++;
+
+    _triggerFlushFeedback();
+
+    postMessageToCadView({
+      'action': 'flush',
+      'actFloors': _activeFloors,
+      'nAct': _activeFloors.length,
+      'qf': _params.flowPerFloor,
+    });
+
+    notifyListeners();
+  }
+
   void setTestingMode(FlowLabReportType type) {
     if (isTestRunning || isMonteCarloRunning) return;
     _activeReportType = type;
@@ -903,16 +1099,11 @@ class SimulatorProvider extends ChangeNotifier {
       _isMonteCarloMode = true;
       _syncWithCadView();
       postMessageToCadView({'action': 'toggleMorningRush', 'enabled': true});
-    } else if (type == FlowLabReportType.overloadStress) {
+    } else if (type == FlowLabReportType.scenarioLab) {
       _isMonteCarloMode = false;
-      final n = _params.floors;
-      _params = _params.copyWith(nActive: n, dischargePattern: 'all', flowPerFloor: 2.9);
-      _activeFloors = List.generate(n, (i) => i + 1);
-      _firstActiveFloor = n;
-      _recalculateStatic();
-      _syncWithCadView();
+      _applyScenarioConfiguration();
       postMessageToCadView({'action': 'toggleMorningRush', 'enabled': false});
-      postMessageToCadView({'action': 'setParams', 'params': {'pattern': 'all', 'nAct': n, 'qf': 2.9}});
+      postMessageToCadView({'action': 'setParams', 'params': {'pattern': 'all', 'nAct': _activeFloors.length, 'qf': 2.0}});
     } else {
       _isMonteCarloMode = false;
       final n = _params.floors;
@@ -978,6 +1169,10 @@ class SimulatorProvider extends ChangeNotifier {
     if (_isMonteCarloMode) {
       downloadMonteCarloReport();
     } else {
+      if (_activeReportType == FlowLabReportType.scenarioLab && (_scenarioCaseAResult == null || _scenarioCaseBResult == null)) {
+        _scenarioCaseAResult = calculateScenarioMetrics(targetFloors: scenarioTargetFloors, gapSeconds: 0.0);
+        _scenarioCaseBResult = calculateScenarioMetrics(targetFloors: scenarioTargetFloors, gapSeconds: 15.0);
+      }
       ReportGeneratorService.downloadHtmlReport(
         params: _params,
         result: currentResult,
@@ -987,6 +1182,8 @@ class SimulatorProvider extends ChangeNotifier {
         activeFloors: _activeFloors,
         reportType: _activeReportType,
         eventLogs: _chronologicalEventLogs,
+        scenarioCaseA: _scenarioCaseAResult,
+        scenarioCaseB: _scenarioCaseBResult,
       );
     }
   }
@@ -1025,6 +1222,10 @@ class SimulatorProvider extends ChangeNotifier {
     if (_isMonteCarloMode) {
       openPrintableMonteCarloReport();
     } else {
+      if (_activeReportType == FlowLabReportType.scenarioLab && (_scenarioCaseAResult == null || _scenarioCaseBResult == null)) {
+        _scenarioCaseAResult = calculateScenarioMetrics(targetFloors: scenarioTargetFloors, gapSeconds: 0.0);
+        _scenarioCaseBResult = calculateScenarioMetrics(targetFloors: scenarioTargetFloors, gapSeconds: 15.0);
+      }
       ReportGeneratorService.openPrintableReport(
         params: _params,
         result: currentResult,
@@ -1034,6 +1235,8 @@ class SimulatorProvider extends ChangeNotifier {
         activeFloors: _activeFloors,
         reportType: _activeReportType,
         eventLogs: _chronologicalEventLogs,
+        scenarioCaseA: _scenarioCaseAResult,
+        scenarioCaseB: _scenarioCaseBResult,
       );
     }
   }

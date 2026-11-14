@@ -203,7 +203,7 @@ button.flush-all-active {
   <!-- Group 1: Testing Suite -->
   <div class="btn-group">
     <button class="pri" id="bFlush" title="Standard EN 12056 Test (Selected Floors)">💧 Flush Now</button>
-    <button class="btn-overload" id="bFlushAll" title="Extreme Full Building Stress Overload Test (100% Load)">⚡ Flush All (Overload)</button>
+    <button class="btn-overload" id="bFlushAll" title="Extreme Full Building Shock Discharge (100% Load)">⚡ Flush All (Shock)</button>
     <button class="btn-rush" id="bMorningRush" title="1-Hour Peak Domestic Morning Rush Simulation">🎲 Morning Rush</button>
   </div>
 
@@ -351,7 +351,7 @@ function setFlushNowActiveState(customFloors) {
   // Clear flush-all active state if it was active
   if (btnAll) {
     btnAll.classList.remove('flush-all-active');
-    btnAll.textContent = '⚡ Flush All (Overload)';
+    btnAll.textContent = '⚡ Flush All (Shock)';
   }
 
   btn.classList.add('flushing-active');
@@ -382,17 +382,17 @@ function setFlushAllActiveState() {
   }
 
   btnAll.classList.add('flush-all-active');
-  btnAll.textContent = `⚡ Overload Running...`;
+  btnAll.textContent = `⚡ Shock Flush Running...`;
   showToast('⚡', `All ${P.N} Bathrooms Discharging Simultaneously! (100% Full Load • ${(P.N * P.qf).toFixed(1)} L/s)`, 4500);
 
-  startTestTimer(10, `Overload Stress Test`, () => {
-    btnAll.textContent = '⚠️ Overload Test Complete!';
+  startTestTimer(10, `Simultaneous Shock Test`, () => {
+    btnAll.textContent = '⚠️ Shock Test Complete!';
     TL.run = false; // Auto-pause after 10s
     setPlayLabel();
-    showToast('⚠️', `Full Building Overload Complete (10s)! Check Results & Report.`, 4500);
+    showToast('⚠️', `Full Building Shock Test Complete (10s)! Check Results & Report.`, 4500);
     setTimeout(() => {
       btnAll.classList.remove('flush-all-active');
-      btnAll.textContent = '⚡ Flush All (Overload)';
+      btnAll.textContent = '⚡ Flush All (Shock)';
     }, 2000);
   });
 }
@@ -407,7 +407,7 @@ function resetFlushButtons() {
   }
   if (btnAll) {
     btnAll.classList.remove('flush-all-active');
-    btnAll.textContent = '⚡ Flush All (Overload)';
+    btnAll.textContent = '⚡ Flush All (Shock)';
   }
 }
 

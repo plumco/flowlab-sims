@@ -185,22 +185,62 @@ class DrainagePhysicsEngine {
     return exp(-(phase - riseTime - holdTime) / decayTau);
   }
 
-  /// EN 12056-2:2000 & Huliot Engineering Specification Table 12: Hydraulic capacity (Qmax in L/s)
-  /// Returns (squareEntryCapacity, sweptEntryCapacity)
-  static (double squareCap, double sweptCap) getTable12Capacity(int stackDiameter) {
-    if (stackDiameter >= 200) return (16.0, 21.0);
-    if (stackDiameter >= 160 || stackDiameter >= 150) return (10.0, 12.4);
-    if (stackDiameter >= 125) return (5.8, 7.6);
-    if (stackDiameter >= 110 || stackDiameter >= 100) return (4.0, 5.2);
-    if (stackDiameter >= 90) return (2.7, 3.5);
-    if (stackDiameter >= 80) return (2.0, 2.6);
-    if (stackDiameter >= 75) return (1.5, 2.0);
-    return (0.7, 0.9); // DN 60
+  /// EN 12056-2:2000 Clause 6.3.1: Waste Water Design Flowrate (Qww)
+  /// Qww = K * sqrt(sum(DU))
+  /// where K is frequency factor (Table 3), DU is discharge units (Table 2).
+  static double calculateQww(double kFactor, double sumDU) {
+    if (sumDU <= 0.0) return 0.0;
+    return kFactor * sqrt(sumDU);
   }
 
-  /// Returns the maximum certified capacity (Qmax in L/s) for a given stack diameter and tee type
-  static double getMaxCapacity(int stackDiameter, String teeType) {
-    final (sq, sw) = getTable12Capacity(stackDiameter);
+  /// Calculates residual trap seal based on stack pneumatic pressure differential.
+  /// Standard hydrostatics: 1 mm WG = 9.80665 Pa ≈ 9.81 Pa.
+  /// sealLoss (mm) = abs(deltaP_Pa) / 9.81
+  static double calculateResidualTrapSeal(double initialSealMm, double pressurePa) {
+    final double sealLossMm = pressurePa.abs() / 9.81;
+    return max(0.0, initialSealMm - sealLossMm);
+  }
+
+  /// EN 12056-2:2000 Table 11 & Table 12: Hydraulic capacity (Qmax in L/s)
+  /// Table 11: Primary ventilated stacks (without separate vent / PRL).
+  /// Table 12: Secondary ventilated stacks (with secondary vent / PRL loop).
+  /// Returns (squareEntryCapacity, sweptEntryCapacity)
+  static (double squareCap, double sweptCap) getTable12Capacity(
+    int stackDiameter, {
+    bool hasSecondaryVent = true,
+  }) {
+    if (hasSecondaryVent) {
+      // Table 12: Secondary ventilated discharge stacks (Clause 6.5.2)
+      // High-efficiency performance with Huliot PRL loop / secondary ventilation
+      if (stackDiameter >= 200) return (21.0, 27.3);
+      if (stackDiameter >= 160 || stackDiameter >= 150) return (12.4, 18.3);
+      if (stackDiameter >= 125) return (7.6, 10.0);
+      // DN 110 interpolated between DN 100 (5.6/7.3) and DN 125 (7.6/10.0)
+      if (stackDiameter >= 110) return (6.4, 8.4);
+      if (stackDiameter >= 100) return (5.6, 7.3);
+      if (stackDiameter >= 90) return (3.5, 4.6);
+      if (stackDiameter >= 80) return (2.6, 3.4);
+      if (stackDiameter >= 70) return (2.0, 2.6);
+      return (0.7, 0.9); // DN 60
+    } else {
+      // Table 11: Primary ventilated discharge stacks (Clause 6.5.1)
+      // Unassisted single stack without PRL
+      if (stackDiameter >= 200) return (16.0, 21.0);
+      if (stackDiameter >= 160 || stackDiameter >= 150) return (9.5, 12.4);
+      if (stackDiameter >= 125) return (5.8, 7.6);
+      // DN 110 interpolated between DN 100 (4.0/5.2) and DN 125 (5.8/7.6)
+      if (stackDiameter >= 110) return (4.7, 6.2);
+      if (stackDiameter >= 100) return (4.0, 5.2);
+      if (stackDiameter >= 90) return (2.7, 3.5);
+      if (stackDiameter >= 80) return (2.0, 2.6);
+      if (stackDiameter >= 70) return (1.5, 2.0);
+      return (0.5, 0.7); // DN 60
+    }
+  }
+
+  /// Returns the maximum certified capacity (Qmax in L/s) for a given stack diameter, tee type and PRL state
+  static double getMaxCapacity(int stackDiameter, String teeType, {bool hasSecondaryVent = true}) {
+    final (sq, sw) = getTable12Capacity(stackDiameter, hasSecondaryVent: hasSecondaryVent);
     return teeType == 'swept' ? sw : sq;
   }
 

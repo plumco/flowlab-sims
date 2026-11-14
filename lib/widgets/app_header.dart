@@ -112,29 +112,36 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 ),
               ),
-              // 2. Overload Test
+              // 2. Scenario Lab
               InkWell(
                 onTap: provider.isTestRunning || provider.isMonteCarloRunning
                     ? null
-                    : () => provider.setTestingMode(FlowLabReportType.overloadStress),
+                    : () => provider.setTestingMode(FlowLabReportType.scenarioLab),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                   decoration: BoxDecoration(
-                    color: (!provider.isMonteCarloMode && provider.activeReportType == FlowLabReportType.overloadStress)
-                        ? (isDark ? const Color(0xFFEA580C).withValues(alpha: 0.25) : const Color(0xFFEA580C).withValues(alpha: 0.15))
+                    color: (!provider.isMonteCarloMode && provider.activeReportType == FlowLabReportType.scenarioLab)
+                        ? (isDark ? const Color(0xFF2563EB).withValues(alpha: 0.25) : const Color(0xFF2563EB).withValues(alpha: 0.15))
                         : Colors.transparent,
                   ),
-                  child: Text(
-                    '⚡ Overload',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: (!provider.isMonteCarloMode && provider.activeReportType == FlowLabReportType.overloadStress)
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      color: (!provider.isMonteCarloMode && provider.activeReportType == FlowLabReportType.overloadStress)
-                          ? const Color(0xFFEA580C)
-                          : (isDark ? Colors.white70 : Colors.black87),
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.science_rounded, size: 12, color: Color(0xFF2563EB)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Scenario Lab',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: (!provider.isMonteCarloMode && provider.activeReportType == FlowLabReportType.scenarioLab)
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: (!provider.isMonteCarloMode && provider.activeReportType == FlowLabReportType.scenarioLab)
+                              ? const Color(0xFF2563EB)
+                              : (isDark ? Colors.white70 : Colors.black87),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -285,8 +292,8 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
               onPressed: onExportPdf,
               icon: Icon(provider.verdict == StandardVerdict.pass ? Icons.check_circle_rounded : Icons.warning_rounded, size: 14, color: Colors.white),
               label: Text(
-                provider.activeReportType == FlowLabReportType.overloadStress
-                    ? 'Overload Report 📄'
+                provider.activeReportType == FlowLabReportType.scenarioLab
+                    ? 'Scenario Report 📄'
                     : (provider.verdict == StandardVerdict.pass ? 'Report Ready 📄' : 'Test Failed ⚠️'),
                 style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
               ),
@@ -297,16 +304,16 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
               onPressed: () => provider.resumeContinuousPlay(),
               icon: const Icon(Icons.play_arrow_rounded, color: AppColors.accent, size: 21),
             ),
-          ] else if (provider.activeReportType == FlowLabReportType.overloadStress) ...[
+          ] else if (provider.activeReportType == FlowLabReportType.scenarioLab) ...[
             FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFC2410C),
+                backgroundColor: const Color(0xFF2563EB),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              onPressed: () => provider.triggerFlushAll(),
-              icon: const Icon(Icons.bolt_rounded, size: 15, color: Colors.white),
-              label: const Text('Overload Test', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.white)),
+              onPressed: () => provider.runScenarioStudy(),
+              icon: const Icon(Icons.science_rounded, size: 15, color: Colors.white),
+              label: Text('Scenario Lab (${provider.scenarioTargetFloors}F)', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.white)),
             ),
             const SizedBox(width: 4),
           ] else ...[

@@ -100,7 +100,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   void _showTestCompletedDialog(BuildContext context, SimulatorProvider provider) {
     final maxCap = DrainagePhysicsEngine.getMaxCapacity(provider.params.stackDiameter, provider.params.teeType);
     final bool isOverloaded = provider.totalDischargeFlow > maxCap;
-    final bool isFullBuildingOverload = provider.activeReportType == FlowLabReportType.overloadStress;
+    final bool isScenarioLab = provider.activeReportType == FlowLabReportType.scenarioLab;
     final isPass = (provider.verdict == StandardVerdict.pass) && !isOverloaded;
     final String sysDetail = switch (provider.params.prlOption) {
       2 => 'PRL System B (Stack Offset Loop)',
@@ -141,14 +141,14 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isFullBuildingOverload
-                        ? '⚠️ Full Building Overload Test Complete!'
+                    isScenarioLab
+                        ? '🧪 Scenario Diversity Study Complete!'
                         : 'EN 12056 Test Completed!',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   Text(
-                    isFullBuildingOverload
-                        ? 'All ${provider.params.floors} storeys discharged simultaneously · Table 12 overload evaluated'
+                    isScenarioLab
+                        ? '${provider.scenarioTargetFloors} Storeys Tested · Diversity vs 0s Shock Evaluated'
                         : 'Simulation auto-paused at steady state · Data certified',
                     style: TextStyle(
                       fontSize: 11,
