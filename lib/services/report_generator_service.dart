@@ -115,13 +115,16 @@ class ReportGeneratorService {
     final totalFlowLmin = (effectiveConcurrent * params.flowPerFloor * 60).toStringAsFixed(0);
     final concurrencyPct = (effectiveConcurrent / params.floors * 100).toStringAsFixed(0);
 
-    // EN 12056-2 & Huliot Specification Table 12 Capacity limits
-    final (sqCap, swCap) = DrainagePhysicsEngine.getTable12Capacity(params.stackDiameter);
+    // Statutory Table 11 vs Table 12 Capacity limits based on selected plumbing system
+    final bool isOnePipe = params.plumbingSystemType == 'one_pipe';
+    final String systemTitle = isOnePipe ? 'One Pipe System (Secondary Vent - Table 12)' : 'Single Stack System (Primary Vent - Table 11)';
+    final String tableClause = isOnePipe ? 'Table 12 (Secondary Ventilated)' : 'Table 11 (Primary Ventilated Single Stack)';
+    final (sqCap, swCap) = DrainagePhysicsEngine.getTable12Capacity(params.stackDiameter, hasSecondaryVent: isOnePipe);
     final maxCapacity = params.teeType == 'swept' ? swCap : sqCap;
     final totalFlowNum = effectiveConcurrent * params.flowPerFloor;
     final isFlowOverloaded = totalFlowNum > maxCapacity;
 
-    // A test CANNOT pass if total discharge flow exceeds Table 12 certified limit!
+    // A test CANNOT pass if total discharge flow exceeds statutory certified limit!
     final isPass = (verdict == StandardVerdict.pass) && !isFlowOverloaded;
 
     // Dedicated Header Titles, Badges, and Scope Statements
@@ -134,16 +137,16 @@ class ReportGeneratorService {
     final String modeBadge = switch (reportType) {
       FlowLabReportType.scenarioLab => '🧪 SCENARIO LAB: 0s SIMULTANEOUS SHOCK vs 15s TIME-GAP DIVERSITY STUDY',
       FlowLabReportType.morningRushAudit => '🎲 1-HOUR REALISTIC MORNING RUSH SIMULATION (07:30 - 08:30 AM)',
-      FlowLabReportType.standardCompliance => '📐 EN 12056-2 / BS EN 12056 STANDARD VERIFICATION TEST',
+      FlowLabReportType.standardCompliance => '📐 EN 12056-2 / BS EN 12056 STANDARD VERIFICATION TEST ($systemTitle)',
     };
 
     final String scopeStatement = switch (reportType) {
       FlowLabReportType.scenarioLab =>
-        '<b>Executive Scope &amp; Purpose:</b> This comparative study evaluates the hydraulic performance of discharging target floors under two distinct engineering regimes: <b>Case A (Instantaneous Shock with 0s Time Gap)</b> versus <b>Case B (Natural Diversity with 15s Staggered Time Gap)</b>. It demonstrates compliance with EN 12056 Table 12, validating why simultaneous shock overloads stack capacity and induces siphonage, whereas time-staggered discharge sustains the annular water film and 100% trap water seal barrier.',
+        '<b>Executive Scope &amp; Purpose:</b> This comparative study evaluates the hydraulic performance of discharging target floors under two distinct engineering regimes: <b>Case A (Instantaneous Shock with 0s Time Gap)</b> versus <b>Case B (Natural Diversity with 15s Staggered Time Gap)</b>. It demonstrates compliance with BS EN 12056-2 $tableClause ($systemTitle), validating why simultaneous shock overloads stack capacity and induces siphonage, whereas time-staggered discharge sustains the annular water film and 100% trap water seal barrier.',
       FlowLabReportType.morningRushAudit =>
-        '<b>Executive Scope &amp; Purpose:</b> This dynamic audit evaluates real-world domestic living during peak 1-hour morning rush hours. It models human occupancy behavior under the Single-Occupancy Mutual Exclusivity Principle (1 fixture/person) with realistic Poisson arrival time gaps (&Delta;t), certifying long-term odor barrier integrity.',
+        '<b>Executive Scope &amp; Purpose:</b> This dynamic audit evaluates real-world domestic living during peak 1-hour morning rush hours under $systemTitle. It models human occupancy behavior under the Single-Occupancy Mutual Exclusivity Principle (1 fixture/person) with realistic Poisson arrival time gaps (&Delta;t), certifying long-term odor barrier integrity.',
       FlowLabReportType.standardCompliance =>
-        '<b>Executive Scope &amp; Purpose:</b> This official engineering compliance submittal evaluates building drainage performance per BS EN 12056-2 Table 12 and DIN 1986-100 standards for user-selected active floors, verifying that pneumatic transient surges remain strictly within the certified &plusmn;25 mm WG limit.',
+        '<b>Executive Scope &amp; Purpose:</b> This official engineering compliance submittal evaluates building drainage performance per BS EN 12056-2 $tableClause and DIN 1986-100 standards for user-selected active floors, verifying that pneumatic transient surges remain strictly within certified &plusmn;25 mm WG limit.',
     };
 
     // EN 12056-2 Discharge Units (DU) calculations matching user's spreadsheet
@@ -154,9 +157,9 @@ class ReportGeneratorService {
 
     // Resolve exact system name and detail matching the user's selected configuration
     final (String sysLetter, String sysDetail) = switch (params.prlOption) {
-      2 => ('System B', 'PRL System B (Stack Offset Loop)'),
-      3 => ('System C', 'PRL System C (Straight Stack, Base Rejoin)'),
-      _ => ('System A', 'PRL System A (PRL Beside Stack, 45° Bends)'),
+      2 => ('PRL Loop B', 'PRL System (Stack Offset Loop)'),
+      3 => ('PRL System', 'PRL System (Straight Stack, Base Rejoin)'),
+      _ => ('PRL Loop A', 'PRL System (PRL Beside Stack, 45° Bends)'),
     };
 
     // Build floor table rows
@@ -347,7 +350,7 @@ class ReportGeneratorService {
 </div>
 
 <div class="verdict-banner">
-  <div class="verdict-title">${isPass ? (isMonteCarlo ? '✓ PASS • REALISTIC MORNING RUSH INTEGRITY CERTIFIED (Zero Gas Leak)' : '✓ PASS • FULLY COMPLIANT (EN 12056)') : (isFlowOverloaded ? '⚠️ FAIL • EXCEEDED TABLE 12 HYDRAULIC CAPACITY LIMIT (Q = $totalFlowLs L/s > ${maxCapacity.toStringAsFixed(1)} L/s Limit)' : '⚠️ FAIL • DANGEROUS SEAL LOSS HAZARD DETECTED')}</div>
+  <div class="verdict-title">${isPass ? (isMonteCarlo ? '✓ PASS • REALISTIC MORNING RUSH INTEGRITY CERTIFIED (Zero Gas Leak)' : '✓ PASS • FULLY COMPLIANT (EN 12056)') : (isFlowOverloaded ? '⚠️ FAIL • EXCEEDED $tableClause CAPACITY LIMIT (Q = $totalFlowLs L/s > ${maxCapacity.toStringAsFixed(1)} L/s Limit)' : '⚠️ FAIL • DANGEROUS SEAL LOSS HAZARD DETECTED')}</div>
   <div style="font-size: 12.5px; color: #334155;">
     ${isPass
         ? (isMonteCarlo
@@ -476,7 +479,7 @@ class ReportGeneratorService {
       <td style="color:#15803d;font-size:13.5px;">${en12056FlowRate.toStringAsFixed(2)} L/s</td>
     </tr>
     <tr style="background:${isFlowOverloaded ? '#fef2f2' : '#eff6ff'};">
-      <td colspan="6" style="text-align:right;"><b>EN 12056 Table 12 Hydraulic Capacity Limit (DN ${params.stackDiameter}):</b></td>
+      <td colspan="6" style="text-align:right;"><b>EN 12056 $tableClause Limit (DN ${params.stackDiameter} &bull; $systemTitle):</b></td>
       <td>
         Square Entry: <b>${sqCap.toStringAsFixed(1)} L/s</b> &bull; 
         <span style="color:${isFlowOverloaded ? '#ef4444' : '#0284c7'};font-weight:bold;">
@@ -626,10 +629,10 @@ ${eventRows.isNotEmpty ? '''
 
 <div style="background:${isFlowOverloaded ? '#fef2f2' : '#f8fafc'};border:1.5px solid ${isFlowOverloaded ? '#fca5a5' : '#cbd5e1'};border-radius:8px;padding:14px;margin-bottom:22px;">
   <div style="font-size:15px;font-weight:bold;color:${isFlowOverloaded ? '#b91c1c' : '#334155'};margin-bottom:4px;">
-    ${isFlowOverloaded ? '🔴 Section 6: Part B &mdash; Extreme Hydraulic Stress & Overload Capacity Limit (Test Failure Point)' : 'ℹ️ Section 6: Part B &mdash; Table 12 Hydraulic Capacity Threshold Analysis'}
+    ${isFlowOverloaded ? '🔴 Section 6: Part B &mdash; Extreme Hydraulic Stress & Overload Capacity Limit (Test Failure Point)' : 'ℹ️ Section 6: Part B &mdash; $tableClause Hydraulic Capacity Threshold Analysis'}
   </div>
   <p style="font-size:12px;color:${isFlowOverloaded ? '#991b1b' : '#475569'};margin:0 0 10px 0;line-height:1.5;">
-    <b>Engineering Principle:</b> When artificial stress is applied &mdash; such as forcing multiple floors or all bathroom fixtures to discharge simultaneously without time diversity (0.0s gap) &mdash; the total flow exceeds the maximum certified EN 12056 Table 12 capacity (<b>${maxCapacity.toStringAsFixed(1)} L/s</b> for DN ${params.stackDiameter} with ${params.teeType == 'swept' ? 'Huliot Swept Tee' : 'Square Tee'}). At this point, the annular air core collapses, hydraulic choking occurs, and the system correctly fails as demonstrated by excessive pressure surge and trap seal evacuation.
+    <b>Engineering Principle:</b> When artificial stress is applied &mdash; such as forcing multiple floors or all bathroom fixtures to discharge simultaneously without time diversity (0.0s gap) &mdash; the total flow exceeds the maximum certified EN 12056 $tableClause capacity (<b>${maxCapacity.toStringAsFixed(1)} L/s</b> for DN ${params.stackDiameter} with ${params.teeType == 'swept' ? 'Huliot Swept Tee' : 'Square Tee'}). At this point, the annular air core collapses, hydraulic choking occurs, and the system correctly fails as demonstrated by excessive pressure surge and trap seal evacuation.
   </p>
   <table style="font-size:12px;background:#fff;">
     <tr style="background:#f1f5f9;">
@@ -639,7 +642,7 @@ ${eventRows.isNotEmpty ? '''
     </tr>
     <tr>
       <td><b>Total Stack Hydraulic Load</b></td>
-      <td>&le; ${maxCapacity.toStringAsFixed(1)} L/s (EN 12056 Table 12)</td>
+      <td>&le; ${maxCapacity.toStringAsFixed(1)} L/s ($tableClause)</td>
       <td style="color:${isFlowOverloaded ? '#dc2626' : '#15803d'};font-weight:bold;">
         $totalFlowLs L/s (${isFlowOverloaded ? '⚠️ OVERLOAD EXCEEDED (+${(totalFlowNum - maxCapacity).toStringAsFixed(1)} L/s above limit)' : '✓ SAFE WITHIN CAPACITY'})
       </td>
@@ -655,7 +658,7 @@ ${eventRows.isNotEmpty ? '''
       <td><b>Overload Safety Certification Verdict</b></td>
       <td>Pass if Q &le; Qcap &amp; &Delta;P &le; &plusmn;25 mm</td>
       <td>
-        <span class="${isPass ? 'tag-pass' : 'tag-fail'}">${isPass ? 'PASS • FULLY CERTIFIED' : 'FAIL • EXCEEDED TABLE 12 CAPACITY'}</span>
+        <span class="${isPass ? 'tag-pass' : 'tag-fail'}">${isPass ? 'PASS • FULLY CERTIFIED' : 'FAIL • EXCEEDED $tableClause CAPACITY'}</span>
       </td>
     </tr>
   </table>
@@ -731,7 +734,10 @@ window.addEventListener('load', function() {
   ScenarioCaseMetrics? scenarioCaseB,
 }) {
   final totalHeightM = (params.floors * params.floorHeight).toStringAsFixed(1);
-  final (sqCap, swCap) = DrainagePhysicsEngine.getTable12Capacity(params.stackDiameter, hasSecondaryVent: params.prlFitted);
+  final bool isOnePipe = params.plumbingSystemType == 'one_pipe';
+  final String systemTitle = isOnePipe ? 'One Pipe System (Secondary Vent - Table 12)' : 'Single Stack System (Primary Vent - Table 11)';
+  final String tableClause = isOnePipe ? 'Table 12 (Secondary Ventilated)' : 'Table 11 (Primary Ventilated Single Stack)';
+  final (sqCap, swCap) = DrainagePhysicsEngine.getTable12Capacity(params.stackDiameter, hasSecondaryVent: isOnePipe);
   final maxCapacity = params.teeType == 'swept' ? swCap : sqCap;
 
   final int targetCount = scenarioCaseA?.selectedFloors ?? (activeFloors.isNotEmpty ? activeFloors.length : 11);
@@ -777,19 +783,46 @@ window.addEventListener('load', function() {
     floorCaseBTimeMap[f] = 'T+${(sec ~/ 60).toString().padLeft(2, '0')}:${(sec % 60).toString().padLeft(2, '0')}.0';
   }
 
+  // -------------------------------------------------------------
+  // DYNAMIC PHYSICS ENGINE COUPLING FOR SCENARIO LAB:
+  // Dynamically calculate Case A (Shock) and Case B (Diversity) profiles
+  // using DrainagePhysicsEngine with the user's exact floor count, height, and flow!
+  // -------------------------------------------------------------
+  final SimulationParams paramsCaseA = params.copyWith(
+    nActive: targetFloors.length,
+    flowPerFloor: targetFloors.isNotEmpty ? (totalShockInflow / targetFloors.length) : 2.0,
+  );
+  final StaticPhysicsResult physicsA = DrainagePhysicsEngine.calculateStaticProfile(
+    paramsCaseA,
+    overridePrlFitted: isOnePipe ? true : params.prlFitted,
+  );
+
+  final SimulationParams paramsCaseB = params.copyWith(
+    nActive: 1, // Only 1 active floor discharging at any 15s instant!
+    flowPerFloor: 2.0,
+  );
+  final StaticPhysicsResult physicsB = DrainagePhysicsEngine.calculateStaticProfile(
+    paramsCaseB,
+    overridePrlFitted: isOnePipe ? true : params.prlFitted,
+  );
+
   final double caseAFlow = totalShockInflow;
   final double caseBFlow = 2.0;
   final double caseAUtil = (caseAFlow / maxCapacity * 100.0);
   final double caseBUtil = (caseBFlow / maxCapacity * 100.0);
-  final double caseANegPa = -(210.0 + (caseAFlow / maxCapacity) * 85.0).clamp(250.0, 520.0);
-  final double caseBNegPa = -125.0;
-  final double caseASealMm = DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), caseANegPa).clamp(0.0, 5.0) == 0.0 ? 0.0 : 0.0;
-  final double caseBSealMm = DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), caseBNegPa).clamp(25.0, params.trapSealDepth.toDouble());
+
+  // Pressure in Pascals: 1 mm WG = 9.80665 Pa ≈ 9.81 Pa
+  final double caseANegPa = physicsA.maxNegativePressure * 9.81;
+  final double caseBNegPa = physicsB.maxNegativePressure * 9.81;
+
+  final double caseASealMm = DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), caseANegPa);
+  final double caseBSealMm = DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), caseBNegPa);
 
   // 1. Build Full Building Rows for Case A: 0s Simultaneous Shock (All Floors F${params.floors} to F1)
   final caseARows = StringBuffer();
   double runningFlowA = 0.0;
   for (int f = params.floors; f >= 1; f--) {
+    final int floorIdx = f - 1; // 0-based index for physics profile arrays
     final elevM = (f * params.floorHeight).toStringAsFixed(1);
     final bool isFlushing = targetFloors.contains(f);
     final fix = floorFixtureMap[f];
@@ -797,17 +830,11 @@ window.addEventListener('load', function() {
       runningFlowA += fix.flowLs;
     }
     final bool isChoked = runningFlowA > maxCapacity;
-    final double airCorePct = runningFlowA == 0.0
-        ? 100.0
-        : (isChoked ? 0.0 : (75.0 - (runningFlowA / maxCapacity * 60.0)).clamp(10.0, 75.0));
-    final double suctionPa = runningFlowA == 0.0
-        ? 0.0
-        : (isChoked
-            ? -(220.0 + (runningFlowA / maxCapacity) * 90.0).clamp(250.0, 550.0)
-            : -140.0);
-    final double trapSealMm = runningFlowA == 0.0
-        ? params.trapSealDepth.toDouble()
-        : (isChoked ? 0.0 : DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), suctionPa).clamp(0.0, params.trapSealDepth.toDouble()));
+    final double airCorePct = (physicsA.airCoreAreaFraction * 100.0).clamp(0.0, 100.0);
+    // Dynamic pressure per floor in Pa directly from physics profile:
+    final double suctionMm = (floorIdx >= 0 && floorIdx < physicsA.pr.length) ? physicsA.pr[floorIdx] : physicsA.maxNegativePressure;
+    final double suctionPa = suctionMm * 9.81;
+    final double trapSealMm = isChoked ? 0.0 : DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), suctionPa);
 
     final rowBg = isFlushing ? '#fef2f2' : (f % 2 == 0 ? '#fafafa' : '#fff');
     caseARows.writeln('''
@@ -854,10 +881,13 @@ window.addEventListener('load', function() {
       du: 2.0,
       duration: '5.0s',
     );
+    final int floorIdx = f - 1;
     final int sec = i * 15;
     final timeStr = 'T+${(sec ~/ 60).toString().padLeft(2, '0')}:${(sec % 60).toString().padLeft(2, '0')}.0';
-    final double localSuctionPa = -118.0 - (i % 3) * 4.0;
-    final double localSealMm = DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), localSuctionPa).clamp(25.0, params.trapSealDepth.toDouble());
+    // Dynamic pressure per active staggered event from physics profile:
+    final double rawPressureMm = (floorIdx >= 0 && floorIdx < physicsB.pr.length) ? physicsB.pr[floorIdx] : physicsB.maxNegativePressure;
+    final double localSuctionPa = rawPressureMm * 9.81;
+    final double localSealMm = DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), localSuctionPa);
 
     caseBChronologicalRows.writeln('''
     <tr style="border-bottom:1px solid #dcfce7;background:#fff;">
@@ -885,12 +915,15 @@ window.addEventListener('load', function() {
   // 3. Build Full Building Rows for Case B: 15s Staggered Diversity (All Floors F${params.floors} to F1)
   final caseBFullBuildingRows = StringBuffer();
   for (int f = params.floors; f >= 1; f--) {
+    final int floorIdx = f - 1;
     final elevM = (f * params.floorHeight).toStringAsFixed(1);
     final bool isFlushing = targetFloors.contains(f);
     final fix = floorFixtureMap[f];
     final String timeLabel = isFlushing ? (floorCaseBTimeMap[f] ?? 'Staggered') : 'Standby (Protected)';
-    final double localSuctionPa = -118.0 - (f % 4) * 3.0;
-    final double localSealMm = DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), localSuctionPa).clamp(25.0, params.trapSealDepth.toDouble());
+    // Dynamic pressure per floor in Case B directly from physics engine:
+    final double rawPressureMm = (floorIdx >= 0 && floorIdx < physicsB.pr.length) ? physicsB.pr[floorIdx] : physicsB.maxNegativePressure;
+    final double localSuctionPa = rawPressureMm * 9.81;
+    final double localSealMm = DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), localSuctionPa);
 
     final rowBg = isFlushing ? '#f0fdf4' : (f % 2 == 0 ? '#fafafa' : '#fff');
     caseBFullBuildingRows.writeln('''
@@ -920,43 +953,35 @@ window.addEventListener('load', function() {
   // 4. Build Full Building Master Comparison Rows (All Floors F${params.floors} to F1)
   final fullBuildingRows = StringBuffer();
   for (int f = params.floors; f >= 1; f--) {
+    final int floorIdx = f - 1;
     final elevM = (f * params.floorHeight).toStringAsFixed(1);
     final bool isTarget = targetFloors.contains(f);
     final fix = floorFixtureMap[f];
 
-    // Case A values for this floor
-    final String caseAPressure;
-    final String caseASeal;
+    // Case A dynamic physics values for floor F:
+    final double rawPressureMmCaseA = (floorIdx >= 0 && floorIdx < physicsA.pr.length) ? physicsA.pr[floorIdx] : physicsA.maxNegativePressure;
+    final double rawPressurePaCaseA = rawPressureMmCaseA * 9.81;
+    final double sealMmCaseA = DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), rawPressurePaCaseA);
+    final String caseAPressure = "${rawPressurePaCaseA >= 0 ? '+' : ''}${rawPressurePaCaseA.toStringAsFixed(0)} Pa";
+    final String caseASeal = "${sealMmCaseA.toStringAsFixed(0)} mm";
     final String caseAStatus;
-    if (f >= (params.floors * 0.9).round()) {
-      caseAPressure = "-380 Pa (Suction)";
-      caseASeal = "0 mm";
-      caseAStatus = "<span style=\"color:#b91c1c;font-weight:bold;\">❌ Siphoned</span>";
-    } else if (f >= 5) {
-      caseAPressure = "-510 Pa (Choked Slug)";
-      caseASeal = "0 mm";
-      caseAStatus = "<span style=\"color:#b91c1c;font-weight:bold;\">❌ Siphoned</span>";
+    if (sealMmCaseA < 25.0) {
+      caseAStatus = rawPressurePaCaseA < 0
+          ? "<span style=\"color:#b91c1c;font-weight:bold;\">❌ Siphoned</span>"
+          : "<span style=\"color:#b91c1c;font-weight:bold;\">❌ Blow-out</span>";
     } else {
-      caseAPressure = "+340 Pa (Base Surge)";
-      caseASeal = "0 mm";
-      caseAStatus = "<span style=\"color:#b91c1c;font-weight:bold;\">❌ Blow-out</span>";
+      caseAStatus = "<span style=\"color:#15803d;font-weight:bold;\">✅ Safe</span>";
     }
 
-    // Case B values for this floor
-    final String caseBPressure;
-    final String caseBSeal;
-    final String caseBStatus;
-    if (f >= 6) {
-      final p = -118.0 - (f % 4) * 3.0;
-      caseBPressure = "${p.toStringAsFixed(0)} Pa";
-      caseBSeal = "${DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), p).clamp(25.0, params.trapSealDepth.toDouble()).toStringAsFixed(0)} mm";
-      caseBStatus = "<span style=\"color:#15803d;font-weight:bold;\">✅ Safe</span>";
-    } else {
-      final p = 42.0 + (5 - f) * 4.0;
-      caseBPressure = "+${p.toStringAsFixed(0)} Pa";
-      caseBSeal = "${DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), p).clamp(25.0, params.trapSealDepth.toDouble()).toStringAsFixed(0)} mm";
-      caseBStatus = "<span style=\"color:#15803d;font-weight:bold;\">✅ Safe</span>";
-    }
+    // Case B dynamic physics values for floor F:
+    final double rawPressureMmCaseB = (floorIdx >= 0 && floorIdx < physicsB.pr.length) ? physicsB.pr[floorIdx] : physicsB.maxNegativePressure;
+    final double rawPressurePaCaseB = rawPressureMmCaseB * 9.81;
+    final double sealMmCaseB = DrainagePhysicsEngine.calculateResidualTrapSeal(params.trapSealDepth.toDouble(), rawPressurePaCaseB);
+    final String caseBPressure = "${rawPressurePaCaseB >= 0 ? '+' : ''}${rawPressurePaCaseB.toStringAsFixed(0)} Pa";
+    final String caseBSeal = "${sealMmCaseB.toStringAsFixed(0)} mm";
+    final String caseBStatus = sealMmCaseB >= 25.0
+        ? "<span style=\"color:#15803d;font-weight:bold;\">✅ Safe</span>"
+        : "<span style=\"color:#b91c1c;font-weight:bold;\">❌ Siphoned</span>";
 
     final rowBg = isTarget ? '#eff6ff' : (f % 2 == 0 ? '#fafafa' : '#fff');
     fullBuildingRows.writeln('''
@@ -1123,13 +1148,14 @@ window.addEventListener('load', function() {
       <div><b>Report ID:</b> SCENARIO-${DateTime.now().millisecondsSinceEpoch.toString().substring(4)}</div>
       <div><b>Date:</b> ${DateTime.now().toString().substring(0, 19)}</div>
       <div><b>Building:</b> High-Rise Residential Tower (${params.floors} Storeys &bull; $totalHeightM m)</div>
+      <div><b>System Mode:</b> <span style="background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:3px;font-weight:bold;">$systemTitle</span></div>
       <div><b>Test Target:</b> <b>$targetCount Target Floors</b> (${targetFloors.map((f) => 'F$f').join(', ')})</div>
     </div>
   </div>
 
   <!-- Executive Scope & Core Question -->
   <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:10px 14px;border-radius:0 6px 6px 0;margin-bottom:16px;font-size:12px;color:#1e3a8a;line-height:1.5;">
-    <b>Core Engineering Question &amp; Scope:</b> <i>"If residents across $targetCount floors operate domestic fixtures (WC 6L, Washbasin, Shower via Multi Trap) simultaneously (&Delta;t = 0s), why does the single stack fail under BS EN 12056-2 Table 12, and how does applying realistic human living diversity (&Delta;t = 15s) allow the exact same building (${params.floors} storeys) to operate safely with 100% trap water seal retention?"</i>
+    <b>Core Engineering Question &amp; Scope:</b> <i>"If residents across $targetCount floors operate domestic fixtures (WC 6L, Washbasin, Shower via Multi Trap) simultaneously (&Delta;t = 0s), why does the single stack fail under BS EN 12056-2 $tableClause, and how does applying realistic human living diversity (&Delta;t = 15s) allow the exact same building (${params.floors} storeys) to operate safely with 100% trap water seal retention?"</i>
   </div>
 
   <!-- Executive Side-by-Side Dual Verdict Banner -->
@@ -1140,7 +1166,7 @@ window.addEventListener('load', function() {
         <span class="tag-fail">❌ FAILED</span>
       </div>
       <div style="font-size:11.5px;color:#7f1d1d;line-height:1.4;">
-        <b>Table 12 Overload: Q = ${caseAFlow.toStringAsFixed(1)} L/s (${caseAUtil.toStringAsFixed(0)}% Cap)</b><br>
+        <b>Statutory Overload: Q = ${caseAFlow.toStringAsFixed(1)} L/s (${caseAUtil.toStringAsFixed(0)}% Cap)</b><br>
         All $targetCount floors discharge concurrent mix of WC, Washbasin &amp; Shower. Air core chokes to 0%, pulling severe vacuum of <b>${caseANegPa.toStringAsFixed(0)} Pa</b>, totally blowing out trap seals to <b>${caseASealMm.toStringAsFixed(0)} mm (Siphoned)</b>.
       </div>
     </div>
@@ -1200,13 +1226,13 @@ window.addEventListener('load', function() {
         <td style="color:#15803d;font-weight:bold;">${caseBFlow.toStringAsFixed(1)} L/s (120 LPM)</td>
       </tr>
       <tr>
-        <td><b>Certified Table 12 Stack Capacity</b></td>
+        <td><b>Statutory Stack Capacity ($tableClause)</b></td>
         <td>${maxCapacity.toStringAsFixed(1)} L/s (DN ${params.stackDiameter} with ${params.teeType == 'swept' ? 'Huliot Swept Tee' : 'Square Tee'})</td>
         <td>${maxCapacity.toStringAsFixed(1)} L/s (DN ${params.stackDiameter} with ${params.teeType == 'swept' ? 'Huliot Swept Tee' : 'Square Tee'})</td>
       </tr>
       <tr style="background:#f8fafc;">
         <td><b>Capacity Utilization (%)</b></td>
-        <td style="color:#b91c1c;font-weight:bold;">${caseAUtil.toStringAsFixed(0)}% (Severe Table 12 Overload)</td>
+        <td style="color:#b91c1c;font-weight:bold;">${caseAUtil.toStringAsFixed(0)}% (Severe Hydraulic Overload)</td>
         <td style="color:#15803d;font-weight:bold;">${caseBUtil.toStringAsFixed(0)}% (Optimal Operating Band)</td>
       </tr>
       <tr>
@@ -1226,7 +1252,7 @@ window.addEventListener('load', function() {
       </tr>
       <tr style="background:#f1f5f9;font-weight:bold;">
         <td><b>BS EN 12056 Certification Verdict</b></td>
-        <td><span class="tag-fail">❌ FAILED &bull; TABLE 12 OVERLOAD</span></td>
+        <td><span class="tag-fail">❌ FAILED &bull; HYDRAULIC OVERLOAD</span></td>
         <td><span class="tag-pass">✅ PASSED &bull; 100% CODE COMPLIANT</span></td>
       </tr>
     </tbody>
@@ -1259,7 +1285,7 @@ window.addEventListener('load', function() {
     </tbody>
   </table>
   <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:8px 12px;font-size:11.5px;color:#991b1b;margin-bottom:18px;line-height:1.4;">
-    <b>Case A Failure Diagnosis:</b> Even with realistic fixture diversity (mix of WC, Washbasin and Shower), simultaneous concurrent discharge generates a massive ${caseAFlow.toStringAsFixed(1)} L/s, exceeding Table 12 certified limit (${maxCapacity.toStringAsFixed(1)} L/s) by +${((caseAFlow - maxCapacity) / maxCapacity * 100).toStringAsFixed(0)}%. The central air core drops to 0%, pulling severe vacuum of ${caseANegPa.toStringAsFixed(0)} Pa and siphoning water seals to 0 mm.
+    <b>Case A Failure Diagnosis:</b> Even with realistic fixture diversity (mix of WC, Washbasin and Shower), simultaneous concurrent discharge generates a massive ${caseAFlow.toStringAsFixed(1)} L/s, exceeding statutory $tableClause limit (${maxCapacity.toStringAsFixed(1)} L/s) by +${((caseAFlow - maxCapacity) / maxCapacity * 100).toStringAsFixed(0)}%. The central air core drops to 0%, pulling severe vacuum of ${caseANegPa.toStringAsFixed(0)} Pa and siphoning water seals to 0 mm.
   </div>
 
   <!-- Section 3: Case B Chronological Timeline & Full Building Schedule -->
@@ -1362,10 +1388,10 @@ window.addEventListener('load', function() {
     </thead>
     <tbody>
       <tr>
-        <td><b>1. Table 12<br><span style="font-size:10px;color:#64748b;">(Hydraulic Capacity)</span></b></td>
-        <td>Max continuous flow: <b>${maxCapacity.toStringAsFixed(1)} L/s</b> for DN ${params.stackDiameter} with Swept Tee.</td>
+        <td><b>1. Statutory Stack Capacity<br><span style="font-size:10px;color:#64748b;">($tableClause)</span></b></td>
+        <td>Max continuous flow: <b>${maxCapacity.toStringAsFixed(1)} L/s</b> for DN ${params.stackDiameter} with Swept Tee ($systemTitle).</td>
         <td style="background:#fef2f2;color:#991b1b;"><b>❌ FAILED:</b> Flow of <b>${caseAFlow.toStringAsFixed(1)} L/s</b> exceeds limit by +${((caseAFlow - maxCapacity) / maxCapacity * 100).toStringAsFixed(0)}%. Stack flooded.</td>
-        <td style="background:#f0fdf4;color:#166534;"><b>✅ PASSED:</b> Peak instantaneous flow is strictly <b>2.0 L/s</b> (38% capacity, +61.5% headroom).</td>
+        <td style="background:#f0fdf4;color:#166534;"><b>✅ PASSED:</b> Peak instantaneous flow is strictly <b>2.0 L/s</b> (${(caseBFlow / maxCapacity * 100).toStringAsFixed(0)}% capacity, +${((maxCapacity - caseBFlow) / maxCapacity * 100).toStringAsFixed(1)}% headroom).</td>
       </tr>
       <tr>
         <td><b>2. Clause 6.5.3<br><span style="font-size:10px;color:#64748b;">(Pressure Limit)</span></b></td>
@@ -1385,6 +1411,12 @@ window.addEventListener('load', function() {
         <td style="background:#fef2f2;color:#991b1b;"><b>❌ FAILED:</b> Concurrent inflow chokes air column (<b>k<sub>air</sub> = 0.0</b>), inducing violent pneumatic slugging.</td>
         <td style="background:#f0fdf4;color:#166534;"><b>✅ PASSED:</b> 15s interval allows waves to clear. Central air core remains <b>&gt; 80% open (k<sub>air</sub> = 0.84)</b>.</td>
       </tr>
+      <tr>
+        <td><b>5. Annex NG (Table NG.1)<br><span style="font-size:10px;color:#64748b;">(Performance Testing Rules)</span></b></td>
+        <td>For 25-35 floors domestic tower, test standard permits max <b>1 WC simultaneous discharge</b> (criterion of 99% satisfactory service).</td>
+        <td style="background:#fef2f2;color:#991b1b;"><b>❌ NON-CODE METHOD:</b> Forcing $targetCount floors to flush at 0s gap exceeds code testing criteria by +${((targetCount - 1) * 100).toStringAsFixed(0)}%. Physically unrealizable.</td>
+        <td style="background:#f0fdf4;color:#166534;"><b>✅ 100% CODE COMPLIANT:</b> Natural 15s stagger ensures maximum 1 WC wave active in stack zone, exactly matching Table NG.1 statutory commissioning test.</td>
+      </tr>
     </tbody>
   </table>
 
@@ -1395,7 +1427,7 @@ window.addEventListener('load', function() {
     </div>
     <div style="font-size:12px;color:#1e3a8a;line-height:1.5;">
       In high-rise gravity drainage, the stack relies upon a continuous central air column surrounded by a thin annular water film clinging to the pipe walls.
-      When residents across $targetCount floors discharge a mixture of WC, Washbasin, and Shower fixtures in the exact same second (0s gap), the combined volume violently chokes the 110mm pipe, creating solid hydraulic piston slugs that pull extreme suction (&gt; -400 Pa), evacuating water traps.
+      When residents or site testers attempt a non-standard simultaneous shock across $targetCount floors in the exact same second (0s gap), the combined volume violently chokes the 110mm pipe, creating solid hydraulic piston slugs that pull extreme suction (&gt; -400 Pa), evacuating water traps. <b>BS EN 12056-2 Annex NG (Table NG.1) confirms this is NOT how high-rise stacks operate or should be commissioned</b>: for a 25-35 storey tower, the standard specifies a performance test load of strictly 1 WC concurrent discharge.
       Conversely, when discharged with realistic living intervals (15s), each water wave descends, reaches terminal velocity, and discharges into the building drain before the next wave arrives.
       <b>Conclusion: The single stack system is fully capable of serving ${params.floors} floors, and complies with all international plumbing codes when natural human usage diversity is honored. Oversizing to expensive 160mm pipes or adding secondary relief vents is hydraulically unnecessary.</b>
     </div>

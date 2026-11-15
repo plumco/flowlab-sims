@@ -77,6 +77,19 @@
   </div>
 
   <script>
+    // Always clear old service workers & ensure latest build loads immediately
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (var registration of registrations) {
+          registration.unregister();
+        }
+      });
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (var name of names) caches.delete(name);
+        });
+      }
+    }
     window.__HULIOT_PARAMS__ = null;
     window.__huliotDispatchParams = function(data) {
       window.__HULIOT_PARAMS__ = data;

@@ -2,6 +2,9 @@
   "_how_to_add": "Naya simulator add karne ke liye: 1) HTML file sims/ folder me rakho. 2) Is list me ek entry jodo. Bas. status 'soon' rakhoge to card 'Coming soon' dikhega.",
   "site": {"name": "Huliot Simulators", "tagline": "Drainage ke live simulators. Kholo, floors badlo, result dekho."},
   "simulators": [
+    {"id": "airnet", "title": "AIRNET - Transient Airflow & Pressure Simulator", "file": "sims/airnet/index.html", "status": "live", "featured": true, "added": "2026-11-14",
+     "description": "Prof. Swaffield (Heriot-Watt) MoC based transient airflow and stack pressure simulator. Annular water downflow, negative suction, stack base surcharge, AAV, P.A.P.A., trap seal dynamics & Amoy Gardens SARS forensic model.",
+     "tags": ["Drainage", "AIRNET", "Transient", "MoC", "AAV & PAPA", "Trap Seal"]},
     {"id": "sunken-swept-tee", "title": "Sunken + Swept Tee System", "file": "sims/sunken-swept-tee.html", "status": "live", "featured": true, "added": "2026-11-07",
      "description": "Aapki CAD sheet ka live version. 2 se 100 floors set karo, 3 PRL systems (A, B, C) ek saath, live pressure, trap seal aur Huliot fittings.",
      "tags": ["Drainage", "PRL", "Swept tee", "High-rise"]},

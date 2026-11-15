@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/simulation_params.dart';
 import '../../models/simulation_state.dart';
-import '../../physics/drainage_physics_engine.dart';
 import '../../providers/simulator_provider.dart';
 
 class ParametersPanel extends StatelessWidget {
@@ -947,7 +946,7 @@ class ParametersPanel extends StatelessWidget {
                       ),
                       child: Text(
                         prov.scenarioExecutionType == 'simultaneous'
-                            ? '🔴 0s Shock: All ${prov.scenarioTargetFloors} floors flush simultaneously (${(prov.scenarioTargetFloors * 2.0).toStringAsFixed(1)} L/s). Exceeds Table 12 limit (${DrainagePhysicsEngine.getMaxCapacity(prov.params.stackDiameter, prov.params.teeType).toStringAsFixed(1)} L/s), causing pipe choke & trap blowouts.'
+                            ? '🔴 0s Shock: All ${prov.scenarioTargetFloors} floors flush simultaneously (${(prov.scenarioTargetFloors * 2.0).toStringAsFixed(1)} L/s). Exceeds ${prov.activeTableReference} limit (${prov.activeStackCapacity.toStringAsFixed(1)} L/s), causing pipe choke & trap blowouts.'
                             : (prov.scenarioExecutionType == 'staggered'
                                 ? '🟢 15s Gap: Each floor flushes with 15s interval. Instant load stays at 2.0 L/s, preserving continuous central air core and 100% trap water seal.'
                                 : '⚖️ Dual Study: Computes both 0s Shock and 15s Staggered regimes side-by-side to generate an undeniable engineering proof report for clients.'),
@@ -1423,9 +1422,121 @@ class ParametersPanel extends StatelessWidget {
   }
 
   Widget _buildSystemCards(BuildContext context, SimulationParams p) {
+    final isSingleStack = p.plumbingSystemType != 'one_pipe';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Option 1 vs Option 2 Plumbing System Toggle
+        Row(
+          children: [
+            const Text('Plumbing System Compliance Standard', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+            const SizedBox(width: 8),
+            _buildInfoNotch(
+              context: context,
+              title: 'Plumbing System Architecture',
+              what: 'Option 1: Single Stack System (Table 11: 5.2 L/s) - Huliot primary single stack.\nOption 2: One Pipe System (Table 12: 7.3 L/s to 8.4 L/s) - Secondary ventilated with full vent pipe.',
+              how: 'क्लिक करके Single Stack System या One Pipe System सिलेक्ट करें।',
+              impact: 'Single Stack System डिफ़ॉल्ट है जो 95% रियल प्रोजेक्ट्स में काम आता है।',
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: () => provider.setPlumbingSystemType('single_stack'),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSingleStack ? AppColors.accent.withOpacity(0.12) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSingleStack ? AppColors.accent : (isDarkMode ? AppColors.darkBorder : AppColors.lightBorder),
+                      width: isSingleStack ? 1.6 : 1.0,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            isSingleStack ? Icons.radio_button_checked : Icons.radio_button_off,
+                            size: 15,
+                            color: isSingleStack ? AppColors.accent : Colors.grey,
+                          ),
+                          const SizedBox(width: 6),
+                          const Expanded(
+                            child: Text(
+                              'Single Stack System',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      const Text(
+                        'EN 12056 Table 11 • Primary Vent • 5.2 L/s (Default)',
+                        style: TextStyle(fontSize: 9.5, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: InkWell(
+                onTap: () => provider.setPlumbingSystemType('one_pipe'),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: !isSingleStack ? AppColors.accent.withOpacity(0.12) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: !isSingleStack ? AppColors.accent : (isDarkMode ? AppColors.darkBorder : AppColors.lightBorder),
+                      width: !isSingleStack ? 1.6 : 1.0,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            !isSingleStack ? Icons.radio_button_checked : Icons.radio_button_off,
+                            size: 15,
+                            color: !isSingleStack ? AppColors.accent : Colors.grey,
+                          ),
+                          const SizedBox(width: 6),
+                          const Expanded(
+                            child: Text(
+                              'One Pipe System',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      const Text(
+                        'EN 12056 Table 12 • Secondary Vent • 7.3 - 8.4 L/s',
+                        style: TextStyle(fontSize: 9.5, color: Color(0xFF0284C7), fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
         Row(
           children: [
             const Text('PRL Arrangement Configuration', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
@@ -1434,8 +1545,8 @@ class ParametersPanel extends StatelessWidget {
               context: context,
               title: 'Positive Relief Line (PRL) Systems',
               what: 'PRL एक विशेष बाईपास वेंट लाइन है जो स्टैक के बेस (नीचे के फ्लोर) पर बनने वाले खतरनाक पॉजिटिव एयर प्रेशर को बाईपास करके ऊपर रिलीज करती है।',
-              how: 'System A (स्टैक के बगल में 45° बेंड्स), System B (ऑफसेट लूप), या System C (स्ट्रेट स्टैक री-ज्वाइन) पर क्लिक करके एक्टिव करें।',
-              impact: 'System C 85-90% पॉजिटिव प्रेशर रिलीज करता है, जिससे ग्राउंड व फर्स्ट फ्लोर के टॉयलेट्स में पानी का फव्वारा (Blowout) 100% रुक जाता है।',
+              how: 'PRL Loop A (स्टैक के बगल में 45° बेंड्स), PRL Loop B (ऑफसेट लूप), या PRL System (स्ट्रेट स्टैक री-ज्वाइन) पर क्लिक करके एक्टिव करें।',
+              impact: 'Huliot PRL System 85-90% पॉजिटिव प्रेशर रिलीज करता है, जिससे ग्राउंड व फर्स्ट फ्लोर के टॉयलेट्स में पानी का फव्वारा (Blowout) 100% रुक जाता है।',
             ),
           ],
         ),
@@ -1444,7 +1555,7 @@ class ParametersPanel extends StatelessWidget {
           children: [
             _sysCard(
               option: 1,
-              name: 'System A',
+              name: 'PRL Loop A',
               desc: 'PRL beside stack, 45° bends',
               eff: 'Standard Relief',
               isSel: p.prlOption == 1,
@@ -1452,7 +1563,7 @@ class ParametersPanel extends StatelessWidget {
             const SizedBox(width: 8),
             _sysCard(
               option: 2,
-              name: 'System B',
+              name: 'PRL Loop B',
               desc: 'Stack offset loop with PRL',
               eff: 'Moderate Relief',
               isSel: p.prlOption == 2,
@@ -1460,7 +1571,7 @@ class ParametersPanel extends StatelessWidget {
             const SizedBox(width: 8),
             _sysCard(
               option: 3,
-              name: 'System C',
+              name: 'PRL System',
               desc: 'Straight stack, base rejoin',
               eff: 'Max Relief (Best)',
               isSel: p.prlOption == 3,
@@ -2252,7 +2363,7 @@ class ParametersPanel extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          // EN 12056 Table 12 Swept Capacity Headroom Banner
+          // Statutory Swept Capacity Headroom Banner (Dynamic Table 11 vs Table 12)
           Container(
             padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
@@ -2266,9 +2377,9 @@ class ParametersPanel extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'EN 12056 Table 12: Stack Capacity Limit',
-                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                    Text(
+                      'EN 12056 ${provider.activeTableReference}: Stack Capacity Limit',
+                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
                     ),
                     Text(
                       '+${headroom.toStringAsFixed(1)}% Headroom',

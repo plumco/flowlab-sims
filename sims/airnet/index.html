@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIRNET - Transient Airflow & Pressure Simulator</title>
+    <link rel="stylesheet" href="css/airnet.css">
+    <!-- Google Fonts for sleek engineering typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Top Navigation Header -->
+    <header class="navbar">
+        <div class="nav-left">
+            <a href="../../index.html" class="back-link">
+                <span>←</span>
+                <span>Browse All Simulators</span>
+            </a>
+            <div class="app-title">
+                <span class="brand-badge">AIRNET MoC Engine</span>
+                <span>Transient Airflow & Pressure Simulator</span>
+            </div>
+        </div>
+        <div class="nav-right">
+            <div id="statusPill" class="status-pill">
+                <div class="status-dot"></div>
+                <span id="statusText">AIRNET SOLVER ACTIVE</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Preset Engineering Scenarios Carousel -->
+    <nav class="presets-bar" id="presetChipsContainer">
+        <!-- Injected via presets.js -->
+    </nav>
+
+    <!-- Scenario Engineering Guidance Box -->
+    <div class="guidance-box">
+        <span class="guidance-icon">💡</span>
+        <span id="guidanceText">Loading scenario...</span>
+    </div>
+
+    <!-- Main 3-Column Engineering Dashboard Layout -->
+    <main class="main-container">
+        
+        <!-- Left Panel: Hydraulic Controls & Network Configuration -->
+        <aside class="panel">
+            <div class="panel-title">
+                <span>System Parameters</span>
+                <span style="font-size: 0.7rem; color: var(--text-muted);">Swaffield (2010)</span>
+            </div>
+            <div class="panel-content">
+                
+                <!-- Discharge Control -->
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Discharge Location</span>
+                        <span id="floorVal" class="control-val">Floor 12</span>
+                    </div>
+                    <input type="range" id="floorSlider" min="1" max="15" value="12" step="1">
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Water Flow Rate (Qw)</span>
+                        <span id="rateVal" class="control-val">2.5 L/s</span>
+                    </div>
+                    <input type="range" id="rateSlider" min="0" max="6" value="2.5" step="0.5">
+                </div>
+
+                <button id="dischargeBtn" class="btn btn-primary" style="width: 100%; margin-bottom: 1.25rem;">
+                    🌊 Trigger Flush Discharge
+                </button>
+
+                <!-- Boundary Conditions Checklist -->
+                <div class="control-group">
+                    <div class="control-label" style="margin-bottom: 0.6rem;">
+                        <span>Boundary Conditions</span>
+                    </div>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="surchargeCheck">
+                        <span>Stack Base Surcharge (Blocked Base)</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="aavCheck">
+                        <span>Air Admittance Valve (AAV) at Top</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="papaCheck">
+                        <span>P.A.P.A.™ Attenuator (Floor 1-2)</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="acousticCheck">
+                        <span>10Hz Acoustic Pulse Test (Kelly 2008)</span>
+                    </label>
+                </div>
+
+                <!-- Simulation Controls -->
+                <div class="btn-row">
+                    <button id="playPauseBtn" class="btn btn-secondary">⏸ Pause</button>
+                    <button id="resetBtn" class="btn btn-secondary">🔄 Reset</button>
+                </div>
+
+                <!-- Live Diagnostic Metrics -->
+                <div style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                    <div class="control-label" style="margin-bottom: 0.5rem;">
+                        <span>Live Telemetry</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-key">Simulation Time:</span>
+                        <span class="metric-val" id="metricSimTime">0.00 s</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-key">Peak Suction:</span>
+                        <span class="metric-val" id="metricMaxSuction" style="color: var(--accent-cyan);">-0.0 mm</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-key">Peak Backpressure:</span>
+                        <span class="metric-val" id="metricMaxBackpressure" style="color: var(--accent-red);">+0.0 mm</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-key">Depleted Traps:</span>
+                        <span class="metric-val" id="metricDepletedCount" style="color: var(--accent-amber);">0 / 15</span>
+                    </div>
+                </div>
+
+                <button id="exportBtn" class="btn btn-secondary" style="width: 100%; margin-top: 1.25rem;">
+                    📥 Export Data to CSV
+                </button>
+
+            </div>
+        </aside>
+
+        <!-- Center Panel: 2D Building Drainage Stack & Continuous Height-Pressure Profile -->
+        <section class="panel">
+            <div class="panel-title">
+                <span>Multi-Story Stack Physical Simulation</span>
+                <span style="font-size: 0.7rem; color: var(--text-muted);">1D Method of Characteristics Grid (dx=1.0m, dt=2ms)</span>
+            </div>
+            <div class="panel-content" style="padding: 0.75rem;">
+                <div class="viz-layout">
+                    <!-- 2D Stack cross section -->
+                    <div class="stack-canvas-wrapper">
+                        <div class="canvas-header">
+                            <span>15-Story Vertical Stack & Annular Film</span>
+                            <span>Water Film Traction vs Air Core</span>
+                        </div>
+                        <canvas id="stackCanvas"></canvas>
+                    </div>
+
+                    <!-- Pressure Profile Curve -->
+                    <div class="stack-canvas-wrapper" style="flex: 1.4;">
+                        <div class="canvas-header">
+                            <span>Continuous Air Pressure Profile</span>
+                            <span>Limit: ±25 mm WG (EN 12056)</span>
+                        </div>
+                        <canvas id="profileCanvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: Dynamic Appliance Trap Seal Manometers -->
+        <aside class="panel">
+            <div class="panel-title">
+                <span>Appliance Trap Seals (P-Traps)</span>
+                <span style="font-size: 0.7rem; color: var(--text-muted);">Nominal: 50 mm WG</span>
+            </div>
+            <div class="panel-content" id="trapListContainer">
+                <!-- Dynamically populated trap manometer cards -->
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- Bottom Oscilloscope: Time-History Waveforms -->
+    <div class="scope-panel">
+        <div class="canvas-header">
+            <span>Real-Time Transient Pressure Oscilloscope (Base vs. Mid-Height vs. P.A.P.A. Bladder Expansion)</span>
+            <span>Acoustic Wave Speed c ≈ 330 m/s</span>
+        </div>
+        <canvas id="scopeCanvas"></canvas>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        AIRNET Numerical Transient Engine • Formulated on Swaffield (2010) & Kelly et al. (2008) • Open Source Building Drainage Health Initiative
+    </footer>
+
+    <!-- Scripts (Modular Architecture) -->
+    <script src="js/airnet-physics.js"></script>
+    <script src="presets/presets.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

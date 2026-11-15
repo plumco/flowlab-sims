@@ -98,14 +98,18 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   void _showTestCompletedDialog(BuildContext context, SimulatorProvider provider) {
-    final maxCap = DrainagePhysicsEngine.getMaxCapacity(provider.params.stackDiameter, provider.params.teeType);
+    final maxCap = DrainagePhysicsEngine.getMaxCapacity(
+      provider.params.stackDiameter,
+      provider.params.teeType,
+      hasSecondaryVent: provider.isOnePipeSystem,
+    );
     final bool isOverloaded = provider.totalDischargeFlow > maxCap;
     final bool isScenarioLab = provider.activeReportType == FlowLabReportType.scenarioLab;
     final isPass = (provider.verdict == StandardVerdict.pass) && !isOverloaded;
     final String sysDetail = switch (provider.params.prlOption) {
-      2 => 'PRL System B (Stack Offset Loop)',
-      3 => 'PRL System C (Straight Stack, Base Rejoin)',
-      _ => 'PRL System A (Beside Stack, 45° Bends)',
+      2 => 'PRL System (Stack Offset Loop)',
+      3 => 'PRL System (Straight Stack, Base Rejoin)',
+      _ => 'PRL System (Beside Stack, 45° Bends)',
     };
     final dyn = provider.currentDynamicState;
 
@@ -308,15 +312,19 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
   void _showMonteCarloCompletedDialog(BuildContext context, SimulatorProvider provider) {
     final dyn = provider.currentDynamicState;
-    final double maxCap = DrainagePhysicsEngine.getMaxCapacity(provider.params.stackDiameter, provider.params.teeType);
+    final double maxCap = DrainagePhysicsEngine.getMaxCapacity(
+      provider.params.stackDiameter,
+      provider.params.teeType,
+      hasSecondaryVent: provider.isOnePipeSystem,
+    );
     final double peakRushFlow = provider.peakConcurrentFlushes * provider.params.flowPerFloor;
     final bool isRushOverloaded = peakRushFlow > maxCap;
     final isCompliant = !isRushOverloaded && dyn.peakAllPositive <= 25 && dyn.peakAllNegative <= 25 && dyn.trapSealRetention[0] >= 25;
 
     final (String sysLetter, String sysDetail) = switch (provider.params.prlOption) {
-      2 => ('System B', 'PRL System B (Offset Loop)'),
-      3 => ('System C', 'PRL System C (Straight Stack, Base Rejoin)'),
-      _ => ('System A', 'PRL System A (Beside Stack, 45° Bends)'),
+      2 => ('PRL Loop B', 'PRL System (Offset Loop)'),
+      3 => ('PRL System', 'PRL System (Straight Stack, Base Rejoin)'),
+      _ => ('PRL Loop A', 'PRL System (Beside Stack, 45° Bends)'),
     };
 
     showDialog(
@@ -1107,7 +1115,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'EN 12056 Table 12 Limit: Huliot Swept = ${prov.table12SweptCapacity.toStringAsFixed(1)} L/s vs Square = ${prov.table12SquareCapacity.toStringAsFixed(1)} L/s (+${prov.sweptCapacityHeadroomPercent.toStringAsFixed(1)}% headroom)',
+                  '${prov.isOnePipeSystem ? 'EN 12056 Table 12 (One Pipe System)' : 'EN 12056 Table 11 (Single Stack System)'} Limit: Huliot Swept = ${prov.table12SweptCapacity.toStringAsFixed(1)} L/s vs Square = ${prov.table12SquareCapacity.toStringAsFixed(1)} L/s (+${prov.sweptCapacityHeadroomPercent.toStringAsFixed(1)}% headroom)',
                   style: const TextStyle(fontSize: 9.5, color: Color(0xFF0284C7), fontWeight: FontWeight.w500),
                 ),
               ],

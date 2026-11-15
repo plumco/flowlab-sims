@@ -19,6 +19,7 @@ class SimulationParams {
   final double simulationSpeed;
   final double kFactor; // EN 12056-2 Table 3 (0.5, 0.7, 1.0, 1.2)
   final String occupancyType; // 'residential', 'hotel', 'public', 'lab'
+  final String plumbingSystemType; // 'single_stack' (Table 11: 5.2 L/s default), 'one_pipe' (Table 12: 7.3-8.4 L/s)
 
   const SimulationParams({
     this.floors = 10,
@@ -39,6 +40,7 @@ class SimulationParams {
     this.simulationSpeed = 1.0,
     this.kFactor = 0.5,
     this.occupancyType = 'residential',
+    this.plumbingSystemType = 'single_stack',
   });
 
   SimulationParams copyWith({
@@ -60,6 +62,7 @@ class SimulationParams {
     double? simulationSpeed,
     double? kFactor,
     String? occupancyType,
+    String? plumbingSystemType,
   }) {
     final int resolvedFloors = floors ?? this.floors;
     // Ensure nActive never exceeds current floors
@@ -84,6 +87,7 @@ class SimulationParams {
       simulationSpeed: simulationSpeed ?? this.simulationSpeed,
       kFactor: kFactor ?? this.kFactor,
       occupancyType: occupancyType ?? this.occupancyType,
+      plumbingSystemType: plumbingSystemType ?? this.plumbingSystemType,
     );
   }
 

@@ -124,7 +124,11 @@ class SimulatorProvider extends ChangeNotifier {
 
   StandardVerdict get verdict {
     final double qTotal = totalDischargeFlow;
-    final double qCap = DrainagePhysicsEngine.getMaxCapacity(_params.stackDiameter, _params.teeType);
+    final double qCap = DrainagePhysicsEngine.getMaxCapacity(
+      _params.stackDiameter,
+      _params.teeType,
+      hasSecondaryVent: isOnePipeSystem,
+    );
 
     // 1. Mandatory Table 12 Hydraulic Capacity Check (EN 12056-2 / Huliot Specifications):
     // If total flow rate exceeds certified stack capacity (e.g. 5.2 L/s for 110mm Swept Tee,
@@ -196,12 +200,29 @@ class SimulatorProvider extends ChangeNotifier {
   double get buildingTotalDU => _params.floors * 3.1;
   double get en12056DesignFlow => _params.kFactor * sqrt(buildingTotalDU);
 
-  // EN 12056-2 Table 12 & Clause 6.5.3 Getters
-  (double, double) get table12Capacities => DrainagePhysicsEngine.getTable12Capacity(_params.stackDiameter);
+  // Plumbing System Type: Option 1: "Single Stack System" (Table 11: 5.2 L/s default), Option 2: "One Pipe System" (Table 12: 7.3 L/s)
+  bool get isOnePipeSystem => _params.plumbingSystemType == 'one_pipe';
+  String get plumbingSystemName => isOnePipeSystem ? 'One Pipe System (Secondary Vent)' : 'Single Stack System (Primary Vent)';
+  String get activeTableReference => isOnePipeSystem ? 'Table 12 (One Pipe System)' : 'Table 11 (Single Stack System)';
+  String get activeTableClause => isOnePipeSystem ? 'Table 12 (Secondary Ventilated)' : 'Table 11 (Primary Ventilated Single Stack)';
+
+  (double, double) get table12Capacities => DrainagePhysicsEngine.getTable12Capacity(
+        _params.stackDiameter,
+        hasSecondaryVent: isOnePipeSystem,
+      );
   double get table12SquareCapacity => table12Capacities.$1;
   double get table12SweptCapacity => table12Capacities.$2;
+  double get activeStackCapacity => _params.teeType == 'swept' ? table12SweptCapacity : table12SquareCapacity;
   double get sweptCapacityHeadroomPercent => ((table12SweptCapacity - table12SquareCapacity) / table12SquareCapacity) * 100.0;
   double get aavRequiredAirFlow => DrainagePhysicsEngine.calculateAavRequiredAirFlow(en12056DesignFlow);
+
+  void setPlumbingSystemType(String type) {
+    if (isTestRunning || isMonteCarloRunning) return;
+    _params = _params.copyWith(plumbingSystemType: type);
+    _recalculateStatic();
+    _syncWithCadView();
+    notifyListeners();
+  }
 
   void setOccupancyType(String type, double k) {
     if (isTestRunning || isMonteCarloRunning) return;
@@ -943,7 +964,11 @@ class SimulatorProvider extends ChangeNotifier {
   }
 
   ScenarioCaseMetrics calculateScenarioMetrics({required int targetFloors, required double gapSeconds}) {
-    final double qCap = DrainagePhysicsEngine.getMaxCapacity(_params.stackDiameter, _params.teeType);
+    final double qCap = DrainagePhysicsEngine.getMaxCapacity(
+      _params.stackDiameter,
+      _params.teeType,
+      hasSecondaryVent: isOnePipeSystem,
+    );
     final bool isSimultaneous = gapSeconds <= 2.0;
 
     if (isSimultaneous) {
@@ -961,8 +986,8 @@ class SimulatorProvider extends ChangeNotifier {
           ? 'Smooth Annular Film'
           : 'Choked Piston Slug (Full Bore Hydraulic Air Blockage)';
       final String reason = isPass
-          ? 'Instant discharge flow ($instantFlow L/s) is within EN 12056 Table 12 certified capacity ($qCap L/s).'
-          : 'Catastrophic Overload: $targetFloors floors flushing simultaneously generates $instantFlow L/s, exceeding certified stack capacity of $qCap L/s. Complete air core collapse pulls negative pressure beyond trap water seal retention limit.';
+          ? 'Instant discharge flow ($instantFlow L/s) is within EN 12056 $activeTableReference certified capacity ($qCap L/s).'
+          : 'Catastrophic Overload: $targetFloors floors flushing simultaneously generates $instantFlow L/s, exceeding certified $activeTableReference capacity of $qCap L/s. Complete air core collapse pulls negative pressure beyond trap water seal retention limit.';
 
       return ScenarioCaseMetrics(
         label: 'Case A: $targetFloors Floors Simultaneous Shock (Δt = 0s)',

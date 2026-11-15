@@ -24,6 +24,9 @@ class SimulatorMeta {
   final List<String> tags;
   final bool isFeatured;
 
+  final String? url;
+  final bool isExternalUrl;
+
   const SimulatorMeta({
     required this.id,
     required this.title,
@@ -34,11 +37,26 @@ class SimulatorMeta {
     required this.icon,
     required this.tags,
     this.isFeatured = false,
+    this.url,
+    this.isExternalUrl = false,
   });
 }
 
 class SimulatorRegistry {
   static const List<SimulatorMeta> simulators = [
+    SimulatorMeta(
+      id: 'airnet',
+      title: 'AIRNET - Transient Airflow & Pressure Simulator',
+      subtitle: 'Prof. Swaffield MoC 1D transient airflow & Kelly trap diagnostic',
+      description: 'St. Venant 1D Method of Characteristics solver. Simulates annular water film downflow, negative suction peak, stack base hydraulic surcharge, AAV & P.A.P.A.™ active transient attenuator, trap seal blowout/siphonage & Amoy Gardens SARS virus outbreak forensics.',
+      category: SimulatorCategory.drainage,
+      status: SimulatorStatus.live,
+      icon: Icons.air_rounded,
+      tags: ['Drainage', 'AIRNET', 'Transient', 'MoC', 'P.A.P.A.', 'AAV', 'Trap Seal'],
+      isFeatured: true,
+      url: 'sims/airnet/index.html',
+      isExternalUrl: true,
+    ),
     SimulatorMeta(
       id: 'sunken-swept-tee',
       title: 'Sunken Floor + Swept Tee & PRL System',
@@ -76,9 +94,10 @@ class SimulatorRegistry {
       subtitle: 'Hunter’s Curve probabilistic fixture demand & booster sizing',
       description: 'Compute instantaneous peak flow demand (WSFU), pressure drops, booster pump head, and variable frequency drive sizing.',
       category: SimulatorCategory.waterSupply,
-      status: SimulatorStatus.comingSoon,
+      status: SimulatorStatus.live,
       icon: Icons.water_drop_rounded,
       tags: ['Water Supply', 'Booster Pump', 'Hunter Curve', 'Pressure Head'],
+      isFeatured: true,
     ),
     SimulatorMeta(
       id: 'acoustic-noise-lab',
@@ -86,9 +105,10 @@ class SimulatorRegistry {
       subtitle: 'Structure-borne & airborne noise dB(A) simulator',
       description: 'Simulate wastewater flow noise levels across building floors comparing standard PVC, cast iron, and Huliot Ultra Silent triple-layer PP pipes.',
       category: SimulatorCategory.acoustics,
-      status: SimulatorStatus.comingSoon,
+      status: SimulatorStatus.live,
       icon: Icons.graphic_eq_rounded,
       tags: ['Acoustic', 'dB(A) Noise', 'Ultra Silent', 'EN 14366'],
+      isFeatured: true,
     ),
     SimulatorMeta(
       id: 'siphonic-roof-drainage',
@@ -96,13 +116,14 @@ class SimulatorRegistry {
       subtitle: 'Full bore negative pressure siphonic flow calculations',
       description: 'Design roof rainwater gutters, baffles, priming time, and calculate full-bore negative pressure siphonic velocity.',
       category: SimulatorCategory.siphonicRainwater,
-      status: SimulatorStatus.comingSoon,
+      status: SimulatorStatus.live,
       icon: Icons.cloudy_snowing,
       tags: ['Rainwater', 'Siphonic', 'Roof Drainage'],
+      isFeatured: true,
     ),
   ];
 
-  static SimulatorMeta get activeDefault => simulators.first;
+  static SimulatorMeta get activeDefault => simulators.firstWhere((s) => s.id == 'sunken-swept-tee');
 
   static List<SimulatorMeta> getByCategory(SimulatorCategory category) {
     return simulators.where((s) => s.category == category).toList();
