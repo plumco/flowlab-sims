@@ -90,6 +90,116 @@
         });
       }
     }
+    // Real-Time Web Audio Acoustic Decibel Meter & Microphone Sensor
+    window.__huliotAcousticMic = {
+      audioCtx: null,
+      analyser: null,
+      stream: null,
+      dataArray: null,
+      isActive: false,
+      permissionState: "prompt",
+      errorMsg: "",
+      currentDb: 0.0,
+      minDb: 999.0,
+      maxDb: 0.0,
+      sumDb: 0.0,
+      sampleCount: 0,
+      avgDb: 0.0,
+      startTime: 0,
+      samples: [],
+      start: function() {
+        var self = this;
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          self.errorMsg = "Browser does not support microphone audio capture.";
+          self.permissionState = "denied";
+          return Promise.resolve(false);
+        }
+        return navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        }).then(function(stream) {
+          self.stream = stream;
+          self.permissionState = "granted";
+          self.errorMsg = "";
+          self.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          var source = self.audioCtx.createMediaStreamSource(stream);
+          self.analyser = self.audioCtx.createAnalyser();
+          self.analyser.fftSize = 1024;
+          self.analyser.smoothingTimeConstant = 0.25;
+          source.connect(self.analyser);
+          self.dataArray = new Uint8Array(self.analyser.fftSize);
+          self.isActive = true;
+          self.minDb = 999.0;
+          self.maxDb = 0.0;
+          self.sumDb = 0.0;
+          self.sampleCount = 0;
+          self.startTime = Date.now();
+          self.samples = [];
+          self._loop();
+          return true;
+        }).catch(function(err) {
+          console.warn("Microphone access error:", err);
+          self.permissionState = "denied";
+          self.errorMsg = err.name === "NotAllowedError" || err.name === "PermissionDeniedError"
+            ? "Microphone access was denied. Please allow microphone permission in browser settings."
+            : err.message;
+          self.isActive = false;
+          return false;
+        });
+      },
+      stop: function() {
+        this.isActive = false;
+        if (this.stream) {
+          this.stream.getTracks().forEach(function(t) { t.stop(); });
+          this.stream = null;
+        }
+        if (this.audioCtx) {
+          this.audioCtx.close();
+          this.audioCtx = null;
+        }
+      },
+      _loop: function() {
+        if (!this.isActive || !this.analyser) return;
+        this.analyser.getByteTimeDomainData(this.dataArray);
+        var sumSq = 0;
+        for (var i = 0; i < this.dataArray.length; i++) {
+          var norm = (this.dataArray[i] - 128) / 128.0;
+          sumSq += norm * norm;
+        }
+        var rms = Math.sqrt(sumSq / this.dataArray.length);
+        var db = 0;
+        if (rms > 0.00005) {
+          var dbFs = 20 * Math.log10(rms);
+          db = Math.max(8.0, Math.min(95.0, dbFs + 92.0));
+        } else {
+          db = 10.0;
+        }
+        this.currentDb = Number(db.toFixed(1));
+        if (this.currentDb < this.minDb) this.minDb = this.currentDb;
+        if (this.currentDb > this.maxDb) this.maxDb = this.currentDb;
+        this.sumDb += this.currentDb;
+        this.sampleCount++;
+        this.avgDb = Number((this.sumDb / this.sampleCount).toFixed(1));
+        if (this.samples.length > 500) this.samples.shift();
+        this.samples.push(this.currentDb);
+        var self = this;
+        requestAnimationFrame(function() { self._loop(); });
+      },
+      getReading: function() {
+        var durationSec = this.startTime > 0 ? Math.floor((Date.now() - this.startTime) / 1000) : 0;
+        return JSON.stringify({
+          isActive: this.isActive,
+          permissionState: this.permissionState,
+          errorMsg: this.errorMsg,
+          currentDb: this.currentDb,
+          minDb: this.minDb === 999.0 ? 0.0 : this.minDb,
+          maxDb: this.maxDb,
+          avgDb: this.avgDb,
+          durationSec: durationSec,
+          sampleCount: this.sampleCount
+        });
+      }
+    };
+
     window.__HULIOT_PARAMS__ = null;
     window.__huliotDispatchParams = function(data) {
       window.__HULIOT_PARAMS__ = data;

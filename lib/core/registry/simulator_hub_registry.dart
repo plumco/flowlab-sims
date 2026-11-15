@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import '../../models/simulator_meta.dart';
 import '../contracts/simulator_module.dart';
 import '../../simulators/flowlab_drainage/flowlab_drainage_module.dart';

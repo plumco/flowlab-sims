@@ -78,6 +78,18 @@ class SimulatorProvider extends ChangeNotifier {
   Timer? _tickerTimer;
 
   SimulatorProvider() {
+    try {
+      final initialSim = Uri.base.queryParameters['sim'];
+      if (initialSim != null) {
+        final found = SimulatorRegistry.simulators.cast<SimulatorMeta?>().firstWhere(
+              (s) => s?.id == initialSim,
+              orElse: () => null,
+            );
+        if (found != null) {
+          _currentSimulator = found;
+        }
+      }
+    } catch (_) {}
     _initSystemStates();
     _recalculateStatic();
     _initParticles();

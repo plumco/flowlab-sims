@@ -57,23 +57,15 @@ class _VisualizerPanelState extends State<VisualizerPanel> with AutomaticKeepAli
               children: [
                 const Icon(Icons.architecture_rounded, size: 17, color: AppColors.accent),
                 const SizedBox(width: 6),
-                const Text(
-                  '3-System CAD Visualizer',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
-                  ),
-                  child: const Text(
-                    '100% Identical to CAD Sheet',
-                    style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: AppColors.success),
+                const Flexible(
+                  child: Text(
+                    '3-System CAD Visualizer',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 6),
                 const Spacer(),
 
                 // Toggle Full HTML vs Embedded
